@@ -122,6 +122,7 @@ AC_ARG_ENABLE(config-plugin-ibft, AS_HELP_STRING([--enable-config-plugin-ibft], 
 AC_ARG_ENABLE(ifcfg-rh, AS_HELP_STRING([--enable-ifcfg-rh], [enable ifcfg-rh configuration plugin (Fedora/RHEL)]))
 AC_ARG_ENABLE(ifcfg-suse,
               AS_HELP_STRING([--enable-ifcfg-suse], [enable ifcfg-suse configuration plugin (SUSE) (deprecated)]))
+AC_ARG_ENABLE(netplan, AS_HELP_STRING([--enable-netplan], [enable netplan configuration plugin (Ubuntu)]))
 AC_ARG_ENABLE(ifupdown, AS_HELP_STRING([--enable-ifupdown], [enable ifupdown configuration plugin (Debian/Ubuntu)]))
 AC_ARG_ENABLE(ifnet, AS_HELP_STRING([--enable-ifnet], [enable ifnet configuration plugin (Gentoo)]))
 # Default alternative plugins by distribution
@@ -129,11 +130,13 @@ AS_IF([test -z "$enable_ifcfg_rh"], AC_CHECK_FILE(/etc/redhat-release, enable_if
 AS_IF([test -z "$enable_ifcfg_rh"], AC_CHECK_FILE(/etc/fedora-release, enable_ifcfg_rh=yes))
 AS_IF([test -z "$enable_ifcfg_rh"], AC_CHECK_FILE(/etc/mandriva-release, enable_ifcfg_rh=yes))
 AS_IF([test -z "$enable_ifcfg_suse"], AC_CHECK_FILE(/etc/SuSE-release, enable_ifcfg_suse=yes))
+AS_IF([test -z "$enable_netplan" -a -d /etc/netplan], enable_netplan=yes)
 AS_IF([test -z "$enable_ifupdown"], AC_CHECK_FILE(/etc/debian_version, enable_ifupdown=yes))
 AS_IF([test -z "$enable_ifnet"], AC_CHECK_FILE(/etc/gentoo-release, enable_ifnet=yes))
 # Otherwise plugins default to "no"
 AS_IF([test -z "$enable_ifcfg_rh"], enable_ifcfg_rh=no)
 AS_IF([test -z "$enable_ifcfg_suse"], enable_ifcfg_suse=no)
+AS_IF([test -z "$enable_netplan"], enable_netplan=no)
 AS_IF([test -z "$enable_ifupdown"], enable_ifupdown=no)
 AS_IF([test -z "$enable_ifnet"], enable_ifnet=no)
 # Enable ibft by default
@@ -141,6 +144,7 @@ AS_IF([test -z "$enable_config_plugin_ibft"], enable_config_plugin_ibft="yes")
 # Create automake conditionals
 AM_CONDITIONAL(CONFIG_PLUGIN_IBFT, test "$enable_config_plugin_ibft" = "yes")
 AM_CONDITIONAL(CONFIG_PLUGIN_IFCFG_RH, test "$enable_ifcfg_rh" = "yes")
+AM_CONDITIONAL(CONFIG_PLUGIN_NETPLAN, test "$enable_netplan" = "yes")
 AM_CONDITIONAL(CONFIG_PLUGIN_IFUPDOWN, test "$enable_ifupdown" = "yes")
 AM_CONDITIONAL(CONFIG_PLUGIN_IFNET, test "$enable_ifnet" = "yes")
 
@@ -151,6 +155,7 @@ AC_ARG_WITH(config-plugins-default,
 if test -z "$config_plugins_default" -o "$config_plugins_default" = no; then
 	config_plugins_default=''
 	test "$enable_ifcfg_rh" = "yes"           && config_plugins_default="$config_plugins_default,ifcfg-rh"
+	test "$enable_netplan" = "yes"            && config_plugins_default="$config_plugins_default,netplan"
 	test "$enable_ifupdown" = "yes"           && config_plugins_default="$config_plugins_default,ifupdown"
 	test "$enable_ifnet" = "yes"              && config_plugins_default="$config_plugins_default,ifnet"
 	test "$enable_config_plugin_ibft" = "yes" && config_plugins_default="$config_plugins_default,ibft"
@@ -159,6 +164,7 @@ fi
 
 test "$enable_ifcfg_rh" = "yes"           && distro_plugins="$distro_plugins,ifcfg-rh"
 test "$enable_ifcfg_suse" = "yes"         && distro_plugins="$distro_plugins,ifcfg-suse"
+test "$enable_netplan" = "yes"           && distro_plugins="$distro_plugins,netplan"
 test "$enable_ifupdown" = "yes"           && distro_plugins="$distro_plugins,ifupdown"
 test "$enable_ifnet" = "yes"              && distro_plugins="$distro_plugins,ifnet"
 distro_plugins="${distro_plugins#,}"
@@ -1410,6 +1416,7 @@ echo
 echo "Configuration plugins (main.plugins=${config_plugins_default})"
 echo "  ibft: ${enable_config_plugin_ibft}"
 echo "  ifcfg-rh: ${enable_ifcfg_rh}"
+echo "  netplan: ${enable_netplan}"
 echo "  ifupdown: ${enable_ifupdown}"
 echo "  ifnet: ${enable_ifnet}"
 echo
