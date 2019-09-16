@@ -6,6 +6,10 @@ if enable_ifupdown
   subdir('ifupdown')
 endif
 
+if enable_netplan
+  subdir('netplan')
+endif
+
 if enable_tests
   subdir('keyfile/tests')
 endif

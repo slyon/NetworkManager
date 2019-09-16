@@ -279,6 +279,8 @@ glib_dep = declare_dependency(
 
 if run_command('test', '-e', '/etc/sysconfig/network-scripts').returncode() == 0
   distro = 'redhat'
+elif run_command('test', '-e', '/etc/netplan').returncode() == 0
+  distro = 'ubuntu'
 elif run_command('test', '-e', '/etc/SuSE-release').returncode() == 0
   distro = 'suse'
 elif run_command('test', '-e', '/etc/debian_version').returncode() == 0
@@ -290,6 +292,7 @@ else
 endif
 
 enable_ifcfg_rh = get_option('ifcfg_rh') or (distro == 'redhat')
+enable_netplan = get_option('netplan') or (distro == 'ubuntu')
 enable_ifupdown = get_option('ifupdown') or (distro == 'debian')
 
 config_plugins_default = get_option('config_plugins_default')
@@ -298,6 +301,10 @@ if config_plugins_default == ''
 
   if enable_ifcfg_rh
     config_plugins += ['ifcfg-rh']
+  endif
+
+  if enable_netplan
+    config_plugins += ['netplan']
   endif
 
   if enable_ifupdown
@@ -1006,6 +1013,7 @@ output += '  nmtui: ' + enable_nmtui.to_string() + '\n'
 output += '  nm-cloud-setup: ' + enable_nm_cloud_setup.to_string() + '\n'
 output += '\nConfiguration_plugins (main.plugins=' + config_plugins_default + ')\n'
 output += '  ifcfg-rh: ' + enable_ifcfg_rh.to_string() + '\n'
+output += '  netplan: ' + enable_netplan.to_string() + '\n'
 output += '  ifupdown: ' + enable_ifupdown.to_string() + '\n'
 output += '\nHandlers for /etc/resolv.conf:\n' + resolv_conf_summary
 output += '\n'
