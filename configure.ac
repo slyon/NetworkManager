@@ -170,15 +170,19 @@ AC_CHECK_FUNCS([__secure_getenv secure_getenv])
 
 # Alternative configuration plugins
 AC_ARG_ENABLE(ifcfg-rh, AS_HELP_STRING([--enable-ifcfg-rh], [enable ifcfg-rh configuration plugin (Fedora/RHEL)]))
+AC_ARG_ENABLE(netplan, AS_HELP_STRING([--enable-netplan], [enable netplan configuration plugin (Ubuntu)]))
 AC_ARG_ENABLE(ifupdown, AS_HELP_STRING([--enable-ifupdown], [enable ifupdown configuration plugin (Debian/Ubuntu)]))
 # Default alternative plugins by distribution
 AS_IF([test -z "$enable_ifcfg_rh" -a -d /etc/sysconfig/network-scripts], enable_ifcfg_rh=yes)
+AS_IF([test -z "$enable_netplan" -a -d /etc/netplan], enable_netplan=yes)
 AS_IF([test -z "$enable_ifupdown" -a -f /etc/debian_version],            enable_ifupdown=yes)
 # Otherwise plugins default to "no"
 AS_IF([test -z "$enable_ifcfg_rh"], enable_ifcfg_rh=no)
+AS_IF([test -z "$enable_netplan"], enable_netplan=no)
 AS_IF([test -z "$enable_ifupdown"], enable_ifupdown=no)
 # Create automake conditionals
 AM_CONDITIONAL(CONFIG_PLUGIN_IFCFG_RH, test "$enable_ifcfg_rh" = "yes")
+AM_CONDITIONAL(CONFIG_PLUGIN_NETPLAN, test "$enable_netplan" = "yes")
 AM_CONDITIONAL(CONFIG_PLUGIN_IFUPDOWN, test "$enable_ifupdown" = "yes")
 
 AC_ARG_WITH(config-plugins-default,
@@ -188,11 +192,13 @@ AC_ARG_WITH(config-plugins-default,
 if test -z "$config_plugins_default" -o "$config_plugins_default" = no; then
 	config_plugins_default=''
 	test "$enable_ifcfg_rh" = "yes"           && config_plugins_default="$config_plugins_default,ifcfg-rh"
+	test "$enable_netplan" = "yes"            && config_plugins_default="$config_plugins_default,netplan"
 	test "$enable_ifupdown" = "yes"           && config_plugins_default="$config_plugins_default,ifupdown"
 	config_plugins_default="${config_plugins_default#,}"
 fi
 
 test "$enable_ifcfg_rh" = "yes"           && distro_plugins="$distro_plugins,ifcfg-rh"
+test "$enable_netplan" = "yes"           && distro_plugins="$distro_plugins,netplan"
 test "$enable_ifupdown" = "yes"           && distro_plugins="$distro_plugins,ifupdown"
 distro_plugins="${distro_plugins#,}"
 
@@ -1370,6 +1376,7 @@ echo
 
 echo "Configuration plugins (main.plugins=${config_plugins_default})"
 echo "  ifcfg-rh: ${enable_ifcfg_rh}"
+echo "  netplan: ${enable_netplan}"
 echo "  ifupdown: ${enable_ifupdown}"
 echo
 
