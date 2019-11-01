@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /* NetworkManager system settings service
  *
- * Copyright (C) 2008 Red Hat, Inc.
+ * Mathieu Trudel-Lapierre <mathieu.trudel-lapierre@canonical.com>
+ *
+ * Copyright (C) 2019 Canonical Ltd..
  */
 
-#ifndef __NMS_IFCFG_RH_READER_H__
-#define __NMS_IFCFG_RH_READER_H__
+#ifndef __NMS_NETPLAN_READER_H__
+#define __NMS_NETPLAN_READER_H__
 
 #include "nm-connection.h"
 
@@ -20,4 +22,4 @@ NMConnection *nmtst_connection_from_file (const char *filename,
                                           char **out_unhandled,
                                           GError **error);
 
-#endif  /* __NMS_IFCFG_RH_READER_H__ */
+#endif  /* __NMS_NETPLAN_READER_H__ */
