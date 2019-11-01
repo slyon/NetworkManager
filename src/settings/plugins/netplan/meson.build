@@ -42,7 +42,3 @@ run_target(
 check-local-symbols-settings-ifupdown: src/settings/plugins/ifupdown/libnm-settings-plugin-ifupdown.la
   $(call check_so_symbols,$(builddir)/src/settings/plugins/ifupdown/.libs/libnm-settings-plugin-ifupdown.so)
 '''
-
-if enable_tests
-  subdir('tests')
-endif
