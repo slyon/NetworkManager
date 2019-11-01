@@ -2818,6 +2818,61 @@ EXTRA_DIST += \
 	src/settings/plugins/keyfile/tests/meson.build
 
 ###############################################################################
+# src/settings/plugins/netplan
+###############################################################################
+
+if CONFIG_PLUGIN_NETPLAN
+
+core_plugins += src/settings/plugins/netplan/libnm-settings-plugin-netplan.la
+
+noinst_LTLIBRARIES += \
+	src/settings/plugins/netplan/libnms-netplan-core.la
+
+###############################################################################
+
+src_settings_plugins_netplan_libnms_netplan_core_la_SOURCES = \
+	src/settings/plugins/netplan/nms-netplan-common.h \
+	src/settings/plugins/netplan/nms-netplan-utils.c \
+	src/settings/plugins/netplan/nms-netplan-utils.h \
+	src/settings/plugins/netplan/nms-netplan-reader.c \
+	src/settings/plugins/netplan/nms-netplan-reader.h \
+	src/settings/plugins/netplan/nms-netplan-writer.c \
+	src/settings/plugins/netplan/nms-netplan-writer.h \
+	$(NULL)
+
+src_settings_plugins_netplan_libnms_netplan_core_la_CPPFLAGS = $(src_cppflags_base)
+
+$(src_settings_plugins_netplan_libnms_netplan_core_la_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
+
+###############################################################################
+
+src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_SOURCES = \
+	src/settings/plugins/netplan/nms-netplan-storage.c \
+	src/settings/plugins/netplan/nms-netplan-storage.h \
+	src/settings/plugins/netplan/nms-netplan-plugin.c \
+	src/settings/plugins/netplan/nms-netplan-plugin.h \
+	$(NULL)
+
+src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_CPPFLAGS = $(src_cppflags_base)
+
+src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_LDFLAGS = \
+	-module -avoid-version \
+	-Wl,--version-script="$(srcdir)/linker-script-settings.ver" \
+	$(SANITIZER_EXEC_LDFLAGS)
+
+src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_LIBADD = \
+	src/settings/plugins/netplan/libnms-netplan-core.la
+
+$(src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
+
+check-local-symbols-settings-netplan: src/settings/plugins/netplan/libnm-settings-plugin-netplan.la
+	$(call check_so_symbols,$(builddir)/src/settings/plugins/netplan/.libs/libnm-settings-plugin-netplan.so)
+
+check_local += check-local-symbols-settings-netplan
+
+endif
+
+###############################################################################
 # src/settings/plugins/ifcfg-rh
 ###############################################################################
 

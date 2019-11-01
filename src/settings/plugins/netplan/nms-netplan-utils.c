@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0+
 /* NetworkManager system settings service
  *
- * (C) Copyright 2008 - 2017 Red Hat, Inc.
+ * Mathieu Trudel-Lapierre <mathieu.trudel-lapierre@canonical.com>
+ *
+ * Copyright (C) 2019 Canonical Ltd..
  */
 
 #include "nm-default.h"
 
-#include "nms-ifcfg-rh-utils.h"
+#include "nms-netplan-utils.h"
 
 #include <stdlib.h>
 
 #include "nm-core-internal.h"
 #include "NetworkManagerUtils.h"
 
-#include "nms-ifcfg-rh-common.h"
-
 /*****************************************************************************/
 
 gboolean
-nms_ifcfg_rh_util_parse_unhandled_spec (const char *unhandled_spec,
+nms_netplan_util_parse_unhandled_spec (const char *unhandled_spec,
                                         const char **out_unmanaged_spec,
                                         const char **out_unrecognized_spec)
 {
@@ -79,7 +79,7 @@ check_suffix (const char *base, const char *tag)
 }
 
 gboolean
-utils_should_ignore_file (const char *filename, gboolean only_ifcfg)
+utils_should_ignore_file (const char *filename, gboolean only_netplan)
 {
 	gs_free char *base = NULL;
 
@@ -87,26 +87,7 @@ utils_should_ignore_file (const char *filename, gboolean only_ifcfg)
 
 	base = g_path_get_basename (filename);
 
-	/* Only handle ifcfg, keys, and routes files */
-	if (strncmp (base, IFCFG_TAG, strlen (IFCFG_TAG)) != 0) {
-		if (only_ifcfg)
-			return TRUE;
-		else if (   strncmp (base, KEYS_TAG, strlen (KEYS_TAG)) != 0
-		         && strncmp (base, ROUTE_TAG, strlen (ROUTE_TAG)) != 0
-		         && strncmp (base, ROUTE6_TAG, strlen (ROUTE6_TAG)) != 0)
-			return TRUE;
-	}
-
-	/* But not those that have certain suffixes */
-	if (   check_suffix (base, BAK_TAG)
-	    || check_suffix (base, TILDE_TAG)
-	    || check_suffix (base, ORIG_TAG)
-	    || check_suffix (base, REJ_TAG)
-	    || check_suffix (base, RPMNEW_TAG)
-	    || check_suffix (base, AUGNEW_TAG)
-	    || check_suffix (base, AUGTMP_TAG)
-	    || check_rpm_temp_suffix (base))
-		return TRUE;
+	// TODO: Implement any file ignore logic necessary?
 
 	return FALSE;
 }
@@ -121,7 +102,7 @@ utils_cert_path (const char *parent, const char *suffix, const char *extension)
 	g_return_val_if_fail (suffix, NULL);
 	g_return_val_if_fail (extension, NULL);
 
-	name = utils_get_ifcfg_name (parent, FALSE);
+	name = utils_get_netplan_name (parent, FALSE);
 	g_return_val_if_fail (name, NULL);
 
 	dir = g_path_get_dirname (parent);
@@ -129,7 +110,7 @@ utils_cert_path (const char *parent, const char *suffix, const char *extension)
 }
 
 const char *
-utils_get_ifcfg_name (const char *file, gboolean only_ifcfg)
+utils_get_netplan_name (const char *file, gboolean only_netplan)
 {
 	const char *name;
 
@@ -143,34 +124,10 @@ utils_get_ifcfg_name (const char *file, gboolean only_ifcfg)
 	if (!*name)
 		return NULL;
 
-#define MATCH_TAG_AND_RETURN(name, TAG) \
-	G_STMT_START { \
-		if (strncmp (name, TAG, NM_STRLEN (TAG)) == 0) { \
-			name += NM_STRLEN (TAG); \
-			if (name[0] == '\0') \
-				return NULL; \
-			else \
-				return name; \
-		} \
-	} G_STMT_END
-
-	/* Do not detect alias files and return 'eth0:0' instead of 'eth0'.
-	 * Unfortunately, we cannot be sure that our files don't contain colons,
-	 * so we cannot reject files with colons.
-	 *
-	 * Instead, you must not call utils_get_ifcfg_name() with an alias file
-	 * or files that are ignored. */
-	MATCH_TAG_AND_RETURN (name, IFCFG_TAG);
-	if (!only_ifcfg) {
-		MATCH_TAG_AND_RETURN (name, KEYS_TAG);
-		MATCH_TAG_AND_RETURN (name, ROUTE_TAG);
-		MATCH_TAG_AND_RETURN (name, ROUTE6_TAG);
-	}
-
-	return NULL;
+	return name;
 }
 
-/* Used to get any ifcfg/extra file path from any other ifcfg/extra path
+/* Used to get any netplan/extra file path from any other netplan/extra path
  * in the form <tag><name>.
  */
 static char *
@@ -186,7 +143,7 @@ utils_get_extra_path (const char *parent, const char *tag)
 	if (!dirname)
 		g_return_val_if_reached (NULL);
 
-	name = utils_get_ifcfg_name (parent, FALSE);
+	name = utils_get_netplan_name (parent, FALSE);
 	if (name) {
 		if (!strcmp (dirname, "."))
 			item_path = g_strdup_printf ("%s%s", tag, name);
@@ -198,34 +155,12 @@ utils_get_extra_path (const char *parent, const char *tag)
 	return item_path;
 }
 
-char *
-utils_get_ifcfg_path (const char *parent)
-{
-	return utils_get_extra_path (parent, IFCFG_TAG);
-}
 
-char *
-utils_get_keys_path (const char *parent)
-{
-	return utils_get_extra_path (parent, KEYS_TAG);
-}
-
-char *
-utils_get_route_path (const char *parent)
-{
-	return utils_get_extra_path (parent, ROUTE_TAG);
-}
-
-char *
-utils_get_route6_path (const char *parent)
-{
-	return utils_get_extra_path (parent, ROUTE6_TAG);
-}
-
+#if 0 // TODO: Figure out if we need to be picking these; probably not (single file for netplan)
 shvarFile *
-utils_get_extra_ifcfg (const char *parent, const char *tag, gboolean should_create)
+utils_get_extra_netplan (const char *parent, const char *tag, gboolean should_create)
 {
-	shvarFile *ifcfg = NULL;
+	shvarFile *netplan = NULL;
 	char *path;
 
 	path = utils_get_extra_path (parent, tag);
@@ -233,26 +168,27 @@ utils_get_extra_ifcfg (const char *parent, const char *tag, gboolean should_crea
 		return NULL;
 
 	if (should_create && !g_file_test (path, G_FILE_TEST_EXISTS))
-		ifcfg = svCreateFile (path);
+		netplan = svCreateFile (path);
 
-	if (!ifcfg)
-		ifcfg = svOpenFile (path, NULL);
+	if (!netplan)
+		netplan = svOpenFile (path, NULL);
 
 	g_free (path);
-	return ifcfg;
+	return netplan;
 }
 
 shvarFile *
-utils_get_keys_ifcfg (const char *parent, gboolean should_create)
+utils_get_keys_netplan (const char *parent, gboolean should_create)
 {
-	return utils_get_extra_ifcfg (parent, KEYS_TAG, should_create);
+	return utils_get_extra_netplan (parent, KEYS_TAG, should_create);
 }
 
 shvarFile *
-utils_get_route_ifcfg (const char *parent, gboolean should_create)
+utils_get_route_netplan (const char *parent, gboolean should_create)
 {
-	return utils_get_extra_ifcfg (parent, ROUTE_TAG, should_create);
+	return utils_get_extra_netplan (parent, ROUTE_TAG, should_create);
 }
+#endif
 
 /* Finds out if route file has new or older format
  * Returns TRUE  - new syntax (ADDRESS<n>=a.b.c.d ...), error opening file or empty
@@ -289,51 +225,37 @@ utils_has_complex_routes (const char *filename, int addr_family)
 {
 	g_return_val_if_fail (filename, TRUE);
 
-	if (NM_IN_SET (addr_family, AF_UNSPEC, AF_INET)) {
-		gs_free char *rules = utils_get_extra_path (filename, RULE_TAG);
-
-		if (g_file_test (rules, G_FILE_TEST_EXISTS))
-			return TRUE;
-	}
-
-	if (NM_IN_SET (addr_family, AF_UNSPEC, AF_INET6)) {
-		gs_free char *rules = utils_get_extra_path (filename, RULE6_TAG);
-		if (g_file_test (rules, G_FILE_TEST_EXISTS))
-			return TRUE;
-	}
+	// TODO: Do we need to handle complex routes specially??
 
 	return FALSE;
 }
 
-/* Find out if the 'alias' file name might be an alias file for 'ifcfg' file name,
- * or any alias when 'ifcfg' is NULL. Does not check that it's actually a valid
+/* Find out if the 'alias' file name might be an alias file for 'netplan' file name,
+ * or any alias when 'netplan' is NULL. Does not check that it's actually a valid
  * alias name; that happens in reader.c
  */
 gboolean
-utils_is_ifcfg_alias_file (const char *alias, const char *ifcfg)
+utils_is_netplan_alias_file (const char *alias, const char *netplan)
 {
 	g_return_val_if_fail (alias != NULL, FALSE);
 
-	if (strncmp (alias, IFCFG_TAG, strlen (IFCFG_TAG)))
-		return FALSE;
+	if (netplan) {
+		size_t len = strlen (netplan);
 
-	if (ifcfg) {
-		size_t len = strlen (ifcfg);
-
-		return (strncmp (alias, ifcfg, len) == 0 && alias[len] == ':');
+		return (strncmp (alias, netplan, len) == 0 && alias[len] == ':');
 	} else {
 		return (strchr (alias, ':') != NULL);
 	}
 }
 
 char *
-utils_detect_ifcfg_path (const char *path, gboolean only_ifcfg)
+utils_detect_netplan_path (const char *path, gboolean only_netplan)
 {
 	const char *base;
 
 	g_return_val_if_fail (path != NULL, NULL);
 
-	if (utils_should_ignore_file (path, only_ifcfg))
+	if (utils_should_ignore_file (path, only_netplan))
 		return NULL;
 
 	base = strrchr (path, '/');
@@ -342,39 +264,15 @@ utils_detect_ifcfg_path (const char *path, gboolean only_ifcfg)
 	else
 		base += 1;
 
-	if (NM_STR_HAS_PREFIX (base, IFCFG_TAG)) {
-		if (base[NM_STRLEN (IFCFG_TAG)] == '\0')
-			return NULL;
-		if (utils_is_ifcfg_alias_file (base, NULL)) {
-			gs_free char *ifcfg = NULL;
-			char *ptr;
-
-			ifcfg = g_strdup (path);
-			ptr = strrchr (ifcfg, ':');
-			if (   ptr
-			    && ptr > ifcfg
-			    && !strchr (ptr, '/')) {
-				*ptr = '\0';
-				if (g_file_test (ifcfg, G_FILE_TEST_EXISTS)) {
-					/* the file has a colon, so it is probably an alias.
-					 * To be ~more~ certain that this is an alias file,
-					 * check whether a corresponding base file exists. */
-					if (only_ifcfg)
-						return NULL;
-					return g_steal_pointer (&ifcfg);
-				}
-			}
-		}
-		return g_strdup (path);
-	}
-
-	if (only_ifcfg)
+	if (only_netplan)
 		return NULL;
-	return utils_get_ifcfg_path (path);
+
+	// TODO: utils_get_netplan_path (path) ???
+	return NULL;
 }
 
 void
-nms_ifcfg_rh_utils_user_key_encode (const char *key, GString *str_buffer)
+nms_netplan_utils_user_key_encode (const char *key, GString *str_buffer)
 {
 	gsize i;
 
@@ -410,7 +308,7 @@ nms_ifcfg_rh_utils_user_key_encode (const char *key, GString *str_buffer)
 }
 
 gboolean
-nms_ifcfg_rh_utils_user_key_decode (const char *name, GString *str_buffer)
+nms_netplan_utils_user_key_decode (const char *name, GString *str_buffer)
 {
 	gsize i;
 
@@ -489,7 +387,7 @@ nms_ifcfg_rh_utils_user_key_decode (const char *name, GString *str_buffer)
 
 /*****************************************************************************/
 
-const char *const _nm_ethtool_ifcfg_names[] = {
+const char *const _nm_ethtool_netplan_names[] = {
 #define ETHT_NAME(eid, ename) \
 [eid - _NM_ETHTOOL_ID_FEATURE_FIRST] = ""ename""
 	/* indexed by NMEthtoolID - _NM_ETHTOOL_ID_FEATURE_FIRST */
@@ -548,7 +446,7 @@ const char *const _nm_ethtool_ifcfg_names[] = {
 };
 
 const NMEthtoolData *
-nms_ifcfg_rh_utils_get_ethtool_by_name (const char *name)
+nms_netplan_utils_get_ethtool_by_name (const char *name)
 {
 	static const struct {
 		NMEthtoolID ethtool_id;
@@ -565,8 +463,8 @@ nms_ifcfg_rh_utils_get_ethtool_by_name (const char *name)
 	};
 	guint i;
 
-	for (i = 0; i < G_N_ELEMENTS (_nm_ethtool_ifcfg_names); i++) {
-		if (nm_streq (name, _nm_ethtool_ifcfg_names[i]))
+	for (i = 0; i < G_N_ELEMENTS (_nm_ethtool_netplan_names); i++) {
+		if (nm_streq (name, _nm_ethtool_netplan_names[i]))
 			return nm_ethtool_data[i];
 	}
 
