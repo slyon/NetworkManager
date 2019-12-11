@@ -14,6 +14,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <netplan/parse.h>
+
 #include "nm-std-aux/c-list-util.h"
 #include "nm-glib-aux/nm-c-list.h"
 #include "nm-glib-aux/nm-io-utils.h"
@@ -158,7 +160,9 @@ _load_file (NMSNetplanPlugin *self,
 	gs_free_error GError *load_error = NULL;
 	gs_free char *unhandled_spec = NULL;
 	gboolean load_error_ignore;
+	NMSettingsStorage *storage = NULL;
 	struct stat st;
+	const char *uuid;
 
 	if (stat (filename, &st) != 0) {
 		int errsv = errno;
@@ -176,6 +180,7 @@ _load_file (NMSNetplanPlugin *self,
 	                                   &unhandled_spec,
 	                                   &load_error,
 	                                   &load_error_ignore);
+
 	if (load_error) {
 		if (error) {
 			nm_utils_error_set (error, NM_UTILS_ERROR_UNKNOWN,
@@ -206,6 +211,12 @@ _load_file (NMSNetplanPlugin *self,
 		                                          unmanaged_spec,
 		                                          unrecognized_spec);
 	}
+				uuid = nm_connection_get_uuid (connection);
+
+				if (!storage)
+					storage = nm_settings_storage_new (NM_SETTINGS_PLUGIN (self), uuid, NULL);
+
+				_LOGD ("parse: adding connection \"%s\" (%s)", filename, uuid);
 
 	return nms_netplan_storage_new_connection (self,
 	                                           g_steal_pointer (&connection),
@@ -228,7 +239,7 @@ _load_dir (NMSNetplanPlugin *self,
 		return;
 	}
 
-	dupl_filenames = g_hash_table_new_full (nm_str_hash, g_str_equal, NULL, g_free);
+	dupl_filenames = g_hash_table_new_full (nm_str_hash, g_str_equal, NULL, NULL);
 
 	while ((f_filename = g_dir_read_name (dir))) {
 		gs_free char *full_path = NULL;
@@ -558,7 +569,6 @@ add_connection (NMSettingsPlugin *plugin,
 	gs_free char *full_filename = NULL;
 	GError *local = NULL;
 	gboolean reread_same;
-	struct timespec mtime;
 
 	nm_assert_self (self, TRUE);
 	nm_assert (NM_IS_CONNECTION (connection));
@@ -626,7 +636,6 @@ update_connection (NMSettingsPlugin *plugin,
 	GError *local = NULL;
 	gs_unref_object NMConnection *reread = NULL;
 	gboolean reread_same;
-	struct timespec mtime;
 
 	_LOGT ("MATT: called to update netplan config");
 
@@ -688,9 +697,8 @@ delete_connection (NMSettingsPlugin *plugin,
 	NMSNetplanPlugin *self = NMS_NETPLAN_PLUGIN (plugin);
 	NMSNetplanPluginPrivate *priv = NMS_NETPLAN_PLUGIN_GET_PRIVATE (self);
 	NMSNetplanStorage *storage = NMS_NETPLAN_STORAGE (storage_x);
-	const char *operation_message;
+	const char *operation_message = NULL;
 	const char *full_filename;
-	int errsv;
 
 	nm_assert_self (self, TRUE);
 	nm_assert (!error || !*error);
@@ -706,7 +714,7 @@ delete_connection (NMSettingsPlugin *plugin,
 	_LOGT ("commit: deleted \"%s\", profile %s (%s)",
 	       full_filename,
 	       nms_netplan_storage_get_uuid (storage),
-	       operation_message);
+	       operation_message ? operation_message : "");
 
 	nm_sett_util_storages_steal (&priv->storages, storage);
 	nms_netplan_storage_destroy (storage);
@@ -824,8 +832,8 @@ nms_netplan_plugin_init (NMSNetplanPlugin *self)
 static void
 constructed (GObject *object)
 {
-	NMSNetplanPlugin *self = NMS_NETPLAN_PLUGIN (object);
-	NMSNetplanPluginPrivate *priv = NMS_NETPLAN_PLUGIN_GET_PRIVATE (self);
+	//NMSNetplanPlugin *self = NMS_NETPLAN_PLUGIN (object);
+	//NMSNetplanPluginPrivate *priv = NMS_NETPLAN_PLUGIN_GET_PRIVATE (self);
 
 	G_OBJECT_CLASS (nms_netplan_plugin_parent_class)->constructed (object);
 }

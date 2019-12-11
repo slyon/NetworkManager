@@ -2880,7 +2880,7 @@ src_settings_plugins_netplan_libnms_netplan_core_la_SOURCES = \
 	src/settings/plugins/netplan/nms-netplan-writer.h \
 	$(NULL)
 
-src_settings_plugins_netplan_libnms_netplan_core_la_CPPFLAGS = $(src_cppflags_base)
+src_settings_plugins_netplan_libnms_netplan_core_la_CPPFLAGS = $(src_cppflags_base) $(UUID_CFLAGS)
 
 $(src_settings_plugins_netplan_libnms_netplan_core_la_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 
@@ -2893,11 +2893,13 @@ src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_SOURCES = \
 	src/settings/plugins/netplan/nms-netplan-plugin.h \
 	$(NULL)
 
-src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_CPPFLAGS = $(src_cppflags_base)
+src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_CPPFLAGS = $(src_cppflags_base) $(UUID_CFLAGS)
 
 src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_LDFLAGS = \
 	-module -avoid-version \
 	-Wl,--version-script="$(srcdir)/linker-script-settings.ver" \
+	-lnetplan \
+	$(UUID_LIBS) \
 	$(SANITIZER_EXEC_LDFLAGS)
 
 src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_LIBADD = \
