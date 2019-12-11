@@ -39,7 +39,7 @@ gboolean nms_netplan_util_parse_unhandled_spec (const char *unhandled_spec,
 
 char *utils_cert_path (const char *parent, const char *suffix, const char *extension);
 
-const char *utils_get_netplan_name (const char *file, gboolean only_netplan);
+const char *utils_get_netplan_name (const char *file);
 
 gboolean utils_should_ignore_file (const char *filename, gboolean only_netplan);
 
