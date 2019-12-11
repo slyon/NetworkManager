@@ -41,43 +41,6 @@ nms_netplan_util_parse_unhandled_spec (const char *unhandled_spec,
 
 /*****************************************************************************/
 
-/*
- * Check ';[a-fA-F0-9]{8}' file suffix used for temporary files by rpm when
- * installing packages.
- *
- * Implementation taken from upstart.
- */
-static gboolean
-check_rpm_temp_suffix (const char *path)
-{
-	const char *ptr;
-
-	g_return_val_if_fail (path != NULL, FALSE);
-
-	/* Matches *;[a-fA-F0-9]{8}; used by rpm */
-	ptr = strrchr (path, ';');
-	if (   ptr
-	    && strspn (ptr + 1, "abcdefABCDEF0123456789") == 8
-	    && !ptr[9])
-		return TRUE;
-	return FALSE;
-}
-
-static gboolean
-check_suffix (const char *base, const char *tag)
-{
-	int len, tag_len;
-
-	g_return_val_if_fail (base != NULL, TRUE);
-	g_return_val_if_fail (tag != NULL, TRUE);
-
-	len = strlen (base);
-	tag_len = strlen (tag);
-	if ((len > tag_len) && !strcasecmp (base + len - tag_len, tag))
-		return TRUE;
-	return FALSE;
-}
-
 gboolean
 utils_should_ignore_file (const char *filename, gboolean only_netplan)
 {
@@ -102,7 +65,7 @@ utils_cert_path (const char *parent, const char *suffix, const char *extension)
 	g_return_val_if_fail (suffix, NULL);
 	g_return_val_if_fail (extension, NULL);
 
-	name = utils_get_netplan_name (parent, FALSE);
+	name = utils_get_netplan_name (parent);
 	g_return_val_if_fail (name, NULL);
 
 	dir = g_path_get_dirname (parent);
@@ -110,7 +73,7 @@ utils_cert_path (const char *parent, const char *suffix, const char *extension)
 }
 
 const char *
-utils_get_netplan_name (const char *file, gboolean only_netplan)
+utils_get_netplan_name (const char *file)
 {
 	const char *name;
 
@@ -124,71 +87,10 @@ utils_get_netplan_name (const char *file, gboolean only_netplan)
 	if (!*name)
 		return NULL;
 
+	// TODO: make sure the name ends in .yaml!!
+
 	return name;
 }
-
-/* Used to get any netplan/extra file path from any other netplan/extra path
- * in the form <tag><name>.
- */
-static char *
-utils_get_extra_path (const char *parent, const char *tag)
-{
-	char *item_path = NULL, *dirname;
-	const char *name;
-
-	g_return_val_if_fail (parent != NULL, NULL);
-	g_return_val_if_fail (tag != NULL, NULL);
-
-	dirname = g_path_get_dirname (parent);
-	if (!dirname)
-		g_return_val_if_reached (NULL);
-
-	name = utils_get_netplan_name (parent, FALSE);
-	if (name) {
-		if (!strcmp (dirname, "."))
-			item_path = g_strdup_printf ("%s%s", tag, name);
-		else
-			item_path = g_strdup_printf ("%s/%s%s", dirname, tag, name);
-	}
-	g_free (dirname);
-
-	return item_path;
-}
-
-
-#if 0 // TODO: Figure out if we need to be picking these; probably not (single file for netplan)
-shvarFile *
-utils_get_extra_netplan (const char *parent, const char *tag, gboolean should_create)
-{
-	shvarFile *netplan = NULL;
-	char *path;
-
-	path = utils_get_extra_path (parent, tag);
-	if (!path)
-		return NULL;
-
-	if (should_create && !g_file_test (path, G_FILE_TEST_EXISTS))
-		netplan = svCreateFile (path);
-
-	if (!netplan)
-		netplan = svOpenFile (path, NULL);
-
-	g_free (path);
-	return netplan;
-}
-
-shvarFile *
-utils_get_keys_netplan (const char *parent, gboolean should_create)
-{
-	return utils_get_extra_netplan (parent, KEYS_TAG, should_create);
-}
-
-shvarFile *
-utils_get_route_netplan (const char *parent, gboolean should_create)
-{
-	return utils_get_extra_netplan (parent, ROUTE_TAG, should_create);
-}
-#endif
 
 /* Finds out if route file has new or older format
  * Returns TRUE  - new syntax (ADDRESS<n>=a.b.c.d ...), error opening file or empty

@@ -59,6 +59,7 @@
 
 /*****************************************************************************/
 
+#if 0  /* GCC Magic */
 static void
 save_secret_flags (GOutputStream *netplan,
                    const char *key,
@@ -197,11 +198,7 @@ write_object (NMSetting8021x *s_8021x,
 {
 	NMSetting8021xCKScheme scheme;
 	const char *value = NULL;
-	GBytes *blob = NULL;
 	const char *password = NULL;
-	NMSettingSecretFlags flags = NM_SETTING_SECRET_FLAG_NONE;
-	char secret_name[100];
-	char secret_flags[sizeof (secret_name) + NM_STRLEN ("_FLAGS")];
 	const char *extension;
 	char *standard_file;
 
@@ -213,7 +210,6 @@ write_object (NMSetting8021x *s_8021x,
 	case NM_SETTING_802_1X_CK_SCHEME_UNKNOWN:
 		break;
 	case NM_SETTING_802_1X_CK_SCHEME_BLOB:
-		blob = (*(objtype->vtable->blob_func))(s_8021x);
 		break;
 	case NM_SETTING_802_1X_CK_SCHEME_PATH:
 		value = (*(objtype->vtable->path_func))(s_8021x);
@@ -369,7 +365,9 @@ write_8021x_certs (NMSetting8021x *s_8021x,
 
 	return TRUE;
 }
+#endif  /* GCC magic */
 
+#if 0  /* temp disable: unused?? */
 static gboolean
 write_8021x_setting (NMConnection *connection,
                      GOutputStream *netplan,
@@ -380,7 +378,8 @@ write_8021x_setting (NMConnection *connection,
 {
 	NMSetting8021x *s_8021x;
 	NMSetting8021xAuthFlags auth_flags;
-	const char *value, *match;
+	const char *value;
+	const char *match;
 	gconstpointer ptr;
 	GBytes* bytes;
 	GString *phase2_auth;
@@ -566,6 +565,7 @@ write_8021x_setting (NMConnection *connection,
 
 	return TRUE;
 }
+#endif
 
 static gboolean
 write_wireless_security_setting (NMConnection *connection,
@@ -575,12 +575,12 @@ write_wireless_security_setting (NMConnection *connection,
                                  GError **error)
 {
 	NMSettingWirelessSecurity *s_wsec;
-	const char *key_mgmt, *auth_alg, *key, *proto, *cipher;
+	const char *key_mgmt, *key; //, *auth_alg, *proto, *cipher;
 	const char *psk = NULL;
-	gboolean wep = FALSE, wpa = FALSE, dynamic_wep = FALSE;
-	NMSettingWirelessSecurityWpsMethod wps_method;
-	guint32 i, num;
-	GString *str;
+	gboolean wep = FALSE, wpa = FALSE; //, dynamic_wep = FALSE;
+	//NMSettingWirelessSecurityWpsMethod wps_method;
+	guint32 i;  //, num;
+	//GString *str;
 
 	s_wsec = nm_connection_get_setting_wireless_security (connection);
 	if (!s_wsec) {
@@ -592,7 +592,7 @@ write_wireless_security_setting (NMConnection *connection,
 	key_mgmt = nm_setting_wireless_security_get_key_mgmt (s_wsec);
 	g_assert (key_mgmt);
 
-	auth_alg = nm_setting_wireless_security_get_auth_alg (s_wsec);
+	//auth_alg = nm_setting_wireless_security_get_auth_alg (s_wsec);
 
 	g_output_stream_printf (netplan, 0, NULL, NULL, "          auth:\n");
 
@@ -608,7 +608,7 @@ write_wireless_security_setting (NMConnection *connection,
 		wpa = TRUE;
 	} else if (!strcmp (key_mgmt, "ieee8021x")) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "            key-management: 802.1x\n");
-		dynamic_wep = TRUE;
+		//dynamic_wep = TRUE;
 	} else if (!strcmp (key_mgmt, "wpa-eap")) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "            key-management: eap\n");
 		wpa = TRUE;
@@ -649,14 +649,15 @@ write_wireless_security_setting (NMConnection *connection,
 	/* And write the new ones out */
 	if (wep) {
 		NMWepKeyType key_type;
-		const char *key_type_str = NULL;
+		//const char *key_type_str = NULL;
+
+		key_type = nm_setting_wireless_security_get_wep_key_type (s_wsec);
 
 		/* Default WEP TX key index */
 		// TODO: Fix defaultkey / TX key ID for WEP.
 		//svSetValueInt64 (netplan, "DEFAULTKEY", nm_setting_wireless_security_get_wep_tx_keyidx(s_wsec) + 1);
 
 #if 0 // TODO: differentiate hex key vs. passphrase in netplan for WEP (see below)
-		key_type = nm_setting_wireless_security_get_wep_key_type (s_wsec);
 		switch (key_type) {
 		case NM_WEP_KEY_TYPE_KEY:
 			key_type_str = "key";
@@ -674,7 +675,7 @@ write_wireless_security_setting (NMConnection *connection,
 			key = nm_setting_wireless_security_get_wep_key (s_wsec, i);
 			if (key) {
 				gs_free char *ascii_key = NULL;
-				char tag[64];
+				//char tag[64];
 				gboolean key_valid = TRUE;
 
 				/* Passphrase needs a different netplan key since with WEP, there
@@ -782,11 +783,12 @@ write_wireless_setting (NMConnection *connection,
 	GBytes *ssid;
 	const guint8 *ssid_data;
 	gsize ssid_len;
-	const char *mode, *bssid;
+	const char *mode; //, *bssid;
 	const char *device_mac, *cloned_mac;
-	guint32 mtu, chan, i;
+	guint32 mtu, i; //, chan;
 	gboolean adhoc = FALSE, hex_ssid = FALSE;
-	const char *const*macaddr_blacklist;
+	//const char *const*macaddr_blacklist;
+	GString *essid;
 
 	// TODO: move type selection to a place that makes sense (wireless)
 	//svSetValueStr (netplan, "TYPE", TYPE_WIRELESS);
@@ -800,12 +802,14 @@ write_wireless_setting (NMConnection *connection,
 
 	// TODO: wireless: fix matching / blacklist / MAC setting
 	device_mac = nm_setting_wireless_get_mac_address (s_wireless);
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      match: { mac-address: %s }\n", device_mac);
+	if (device_mac)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+				        "      match: { macaddress: %s }\n", device_mac);
 
 	cloned_mac = nm_setting_wireless_get_cloned_mac_address (s_wireless);
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      mac-address: %s\n", cloned_mac);
+	if (cloned_mac)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+				        "      macaddress: %s\n", cloned_mac);
 
 #if 0	// TODO: fix MAC setting, blacklist for wireless.
 	svSetValueStr (netplan, "GENERATE_MAC_ADDRESS_MASK",
@@ -864,7 +868,6 @@ write_wireless_setting (NMConnection *connection,
 		}
 	}
 
-	GString *essid;
 	essid = g_string_sized_new (ssid_len * 2 + 3);
 	if (hex_ssid) {
 
@@ -961,10 +964,10 @@ write_wireless_setting (NMConnection *connection,
 	return TRUE;
 }
 
+#if 0 // TODO: implement infiniband!
 static gboolean
 write_infiniband_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-#if 0 // TODO: implement infiniband!
 	NMSettingInfiniband *s_infiniband;
 	const char *mac, *transport_mode, *parent;
 	guint32 mtu;
@@ -997,18 +1000,19 @@ write_infiniband_setting (NMConnection *connection, GOutputStream *netplan, GErr
 	}
 
 	svSetValueStr (netplan, "TYPE", TYPE_INFINIBAND);
-#endif
 
 	return TRUE;
 }
+#endif
 
 static gboolean
 write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
 	NMSettingWired *s_wired;
-	const char *const*s390_subchannels;
-	guint32 mtu, num_opts, i;
-	const char *const*macaddr_blacklist;
+	//const char *const*s390_subchannels;
+	guint32 mtu; // i, num_opts;
+	//const char *const*macaddr_blacklist;
+	const char *mac;
 
 	// TODO: move type setting for ethernet devices
 	//svSetValueStr (netplan, "TYPE", TYPE_ETHERNET);
@@ -1020,13 +1024,15 @@ write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **
 		return FALSE;
 	}
 
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      match: { mac-address: %s }\n",
-	                        nm_setting_wired_get_mac_address (s_wired));
+	mac = nm_setting_wired_get_mac_address (s_wired);
+	if (mac)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+				        "      match: { macaddress: %s }\n", mac);
 
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      mac-address: %s\n",
-	               nm_setting_wired_get_cloned_mac_address (s_wired));
+	mac = nm_setting_wired_get_cloned_mac_address (s_wired);
+	if (mac)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+				        "      macaddress: %s\n", mac);
 
 	// TODO: dedup fields for mac-address to do MAC setting cleanly.
 	//svSetValueStr (netplan, "GENERATE_MAC_ADDRESS_MASK",
@@ -1114,10 +1120,10 @@ write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **
 	return TRUE;
 }
 
+#if 0 // TODO (cyphermox): add support for ethtool settings in netplan
 static gboolean
 write_ethtool_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-#if 0 // TODO (cyphermox): add support for ethtool settings in netplan
 	NMSettingWired *s_wired;
 	NMSettingEthtool *s_ethtool;
 	const char *duplex;
@@ -1243,31 +1249,10 @@ write_ethtool_setting (NMConnection *connection, GOutputStream *netplan, GError 
 		svUnsetValue (netplan, "ETHTOOL_OPTS");
 
 	return TRUE;
+}
 #endif
-}
 
-static char *
-vlan_priority_maplist_to_stringlist (NMSettingVlan *s_vlan, NMVlanPriorityMap map)
-{
-	char **strlist;
-	char *value;
-
-	if (map == NM_VLAN_INGRESS_MAP)
-		g_object_get (G_OBJECT (s_vlan), NM_SETTING_VLAN_INGRESS_PRIORITY_MAP, &strlist, NULL);
-	else if (map == NM_VLAN_EGRESS_MAP)
-		g_object_get (G_OBJECT (s_vlan), NM_SETTING_VLAN_EGRESS_PRIORITY_MAP, &strlist, NULL);
-	else
-		return NULL;
-
-	if (strlist[0])
-		value = g_strjoinv (",", strlist);
-	else
-		value = NULL;
-	g_strfreev (strlist);
-
-	return value;
-}
-
+#if 0 /* temp disable: only for team? REUSE */
 static gboolean
 write_wired_for_virtual (NMConnection *connection, GOutputStream *netplan)
 {
@@ -1301,15 +1286,16 @@ write_wired_for_virtual (NMConnection *connection, GOutputStream *netplan)
 	}
 	return has_wired;
 }
+#endif
 
 static gboolean
 write_vlan_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
 	NMSettingVlan *s_vlan;
-	char *tmp;
-	guint32 vlan_flags = 0;
-	gsize s_buf_len;
-	char s_buf[50], *s_buf_ptr;
+	//char *tmp;
+	//guint32 vlan_flags = 0;
+	//gsize s_buf_len;
+	//char s_buf[50], *s_buf_ptr;
 
 	s_vlan = nm_connection_get_setting_vlan (connection);
 	if (!s_vlan) {
@@ -1351,6 +1337,48 @@ write_vlan_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 	return TRUE;
 }
 
+static const struct {
+	const char *option;
+	const char *netplan_name;
+} bond_options_mapping[] = {
+	{ NM_SETTING_BOND_OPTION_MIIMON, "mii-monitor-interval" },
+	{ NM_SETTING_BOND_OPTION_UPDELAY, "up-delay" },
+	{ NM_SETTING_BOND_OPTION_DOWNDELAY, "down-delay" },
+	{ NM_SETTING_BOND_OPTION_ARP_INTERVAL, "arp-interval" },
+	{ NM_SETTING_BOND_OPTION_ARP_IP_TARGET, "arp-ip-targets" },
+	{ NM_SETTING_BOND_OPTION_ARP_VALIDATE, "arp-validate" },
+	{ NM_SETTING_BOND_OPTION_PRIMARY, "primary-slave" },
+	{ NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, "primary-reselect-policy" },
+	{ NM_SETTING_BOND_OPTION_FAIL_OVER_MAC, "fail-over-mac-policy" },
+//#define NM_SETTING_BOND_OPTION_USE_CARRIER       "use_carrier"
+	{ NM_SETTING_BOND_OPTION_AD_SELECT, "ad-select" },
+	{ NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY, "transmit-hash-policy" },
+	{ NM_SETTING_BOND_OPTION_RESEND_IGMP, "resend-igmp" },
+	{ NM_SETTING_BOND_OPTION_LACP_RATE, "lacp-rate" },
+	{ NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE, "all-slaves-active" },
+	{ NM_SETTING_BOND_OPTION_ARP_ALL_TARGETS, "arp-all-targets" },
+	{ NM_SETTING_BOND_OPTION_MIN_LINKS, "min-links" },
+	{ NM_SETTING_BOND_OPTION_NUM_GRAT_ARP, "gratuitous-arp" },
+//#define NM_SETTING_BOND_OPTION_NUM_UNSOL_NA      "num_unsol_na"
+	{ NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, "packets-per-slave" },
+//#define NM_SETTING_BOND_OPTION_TLB_DYNAMIC_LB    "tlb_dynamic_lb"
+	{ NM_SETTING_BOND_OPTION_LP_INTERVAL, "learn-packet-interval" },
+};
+
+static void
+_match_bond_option_to_netplan (GString *bond_options, const char *option, const char *value)
+{
+	guint i;
+	const char *name = option;
+
+	for (i = 0; i < G_N_ELEMENTS (bond_options_mapping); i++) {
+		if (nm_streq (option, bond_options_mapping[i].option))
+			name = bond_options_mapping[i].netplan_name;
+	}
+
+	g_string_append_printf (bond_options, "        %s: %s\n", name, value);
+}
+
 static gboolean
 write_bond_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
@@ -1372,7 +1400,7 @@ write_bond_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 		str = g_string_sized_new (64);
 		for (i = 0; i < num_opts; i++) {
 			nm_setting_bond_get_option (s_bond, i, &name, &value);
-			g_string_append_printf (str, "        %s: %s\n", name, value);
+			_match_bond_option_to_netplan (str, name, value);
 		}
 
 		g_output_stream_printf (netplan, 0, NULL, NULL,
@@ -1382,10 +1410,10 @@ write_bond_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 	return TRUE;
 }
 
+#if 0 // TODO (cyphermox): implement team devices in netplan
 static gboolean
 write_team_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-#if 0 // TODO (cyphermox): implement team devices in netplan
 	NMSettingTeam *s_team;
 	const char *config;
 
@@ -1402,8 +1430,8 @@ write_team_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 	*wired = write_wired_for_virtual (connection, netplan);
 
 	return TRUE;
-#endif
 }
+#endif
 
 static guint32
 get_setting_default_uint (NMSetting *setting, const char *prop)
@@ -1422,6 +1450,7 @@ get_setting_default_uint (NMSetting *setting, const char *prop)
 	return ret;
 }
 
+#if 0 /* temp disable: unused? */
 static gboolean
 get_setting_default_boolean (NMSetting *setting, const char *prop)
 {
@@ -1438,6 +1467,7 @@ get_setting_default_boolean (NMSetting *setting, const char *prop)
 	g_value_unset (&val);
 	return ret;
 }
+#endif
 
 static gboolean
 write_bridge_vlans (NMSetting *setting,
@@ -1484,7 +1514,7 @@ write_bridge_setting (NMConnection *connection, GOutputStream *netplan, GError *
 {
 	NMSettingBridge *s_bridge;
 	guint32 i;
-	gboolean b;
+	//gboolean b;
 	GString *opts;
 	const char *mac;
 
@@ -1496,8 +1526,9 @@ write_bridge_setting (NMConnection *connection, GOutputStream *netplan, GError *
 	}
 
 	mac = nm_setting_bridge_get_mac_address (s_bridge);
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      mac-address: %s\n", mac);
+	if (mac)
+			g_output_stream_printf (netplan, 0, NULL, NULL,
+			                        "      macaddress: %s\n", mac);
 
 	/* Bridge options */
 	opts = g_string_sized_new (32);
@@ -1628,10 +1659,10 @@ write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GEr
 	return TRUE;
 }
 
+#if 0 // TODO (cyphermox): TEAM port settings.
 static gboolean
 write_team_port_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-#if 0 // TODO (cyphermox): TEAM port settings.
 	NMSettingTeamPort *s_port;
 	const char *config;
 
@@ -1643,133 +1674,13 @@ write_team_port_setting (NMConnection *connection, GOutputStream *netplan, GErro
 	svSetValueStr (netplan, "TEAM_PORT_CONFIG", config);
 
 	return TRUE;
-#endif
 }
-
-static void
-write_dcb_flags (GOutputStream *netplan, const char *tag, NMSettingDcbFlags flags)
-{
-#if 0
-	char prop[NM_STRLEN ("DCB_xxxxxxxxxxxxxxxxxxxxxxx_yyyyyyyyyyyyyyyyyyyy")];
-
-	nm_sprintf_buf (prop, "DCB_%s_ENABLE", tag);
-	svSetValueStr (netplan, prop, (flags & NM_SETTING_DCB_FLAG_ENABLE) ? "yes" : NULL);
-
-	nm_sprintf_buf (prop, "DCB_%s_ADVERTISE", tag);
-	svSetValueStr (netplan, prop, (flags & NM_SETTING_DCB_FLAG_ADVERTISE) ? "yes" : NULL);
-
-	nm_sprintf_buf (prop, "DCB_%s_WILLING", tag);
-	svSetValueStr (netplan, prop, (flags & NM_SETTING_DCB_FLAG_WILLING) ? "yes" : NULL);
 #endif
-}
 
-static void
-write_dcb_app (GOutputStream *netplan,
-               const char *tag,
-               NMSettingDcbFlags flags,
-               int priority)
-{
-#if 0
-	char prop[NM_STRLEN ("DCB_xxxxxxxxxxxxxxxxxxxxxxx_yyyyyyyyyyyyyyyyyyyy")];
-
-	write_dcb_flags (netplan, tag, flags);
-
-	nm_sprintf_buf (prop, "DCB_%s_PRIORITY", tag);
-	if ((flags & NM_SETTING_DCB_FLAG_ENABLE) && (priority >= 0))
-		svSetValueInt64 (netplan, prop, priority);
-	else
-		svUnsetValue (netplan, prop);
-#endif
-}
-
-typedef gboolean (*DcbGetBoolFunc) (NMSettingDcb *, guint);
-
-static void
-write_dcb_bool_array (GOutputStream *netplan,
-                      const char *key,
-                      NMSettingDcb *s_dcb,
-                      NMSettingDcbFlags flags,
-                      DcbGetBoolFunc get_func)
-{
-#if 0
-	char str[9];
-	guint i;
-
-	if (!(flags & NM_SETTING_DCB_FLAG_ENABLE)) {
-		svUnsetValue (netplan, key);
-		return;
-	}
-
-	str[8] = 0;
-	for (i = 0; i < 8; i++)
-		str[i] = get_func (s_dcb, i) ? '1' : '0';
-	svSetValueStr (netplan, key, str);
-#endif
-}
-
-typedef guint (*DcbGetUintFunc) (NMSettingDcb *, guint);
-
-static void
-write_dcb_uint_array (GOutputStream *netplan,
-                      const char *key,
-                      NMSettingDcb *s_dcb,
-                      NMSettingDcbFlags flags,
-                      DcbGetUintFunc get_func)
-{
-#if 0
-	char str[9];
-	guint i, num;
-
-	if (!(flags & NM_SETTING_DCB_FLAG_ENABLE)) {
-		svUnsetValue (netplan, key);
-		return;
-	}
-
-	str[8] = 0;
-	for (i = 0; i < 8; i++) {
-		num = get_func (s_dcb, i);
-		if (num < 10)
-			str[i] = '0' + num;
-		else if (num == 15)
-			str[i] = 'f';
-		else
-			g_assert_not_reached ();
-	}
-	svSetValueStr (netplan, key, str);
-#endif
-}
-
-static void
-write_dcb_percent_array (GOutputStream *netplan,
-                         const char *key,
-                         NMSettingDcb *s_dcb,
-                         NMSettingDcbFlags flags,
-                         DcbGetUintFunc get_func)
-{
-#if 0
-	GString *str;
-	guint i;
-
-	if (!(flags & NM_SETTING_DCB_FLAG_ENABLE)) {
-		svUnsetValue (netplan, key);
-		return;
-	}
-
-	str = g_string_sized_new (30);
-	for (i = 0; i < 8; i++) {
-		if (str->len)
-			g_string_append_c (str, ',');
-		g_string_append_printf (str, "%d", get_func (s_dcb, i));
-	}
-	svSetValueStr (netplan, key, str->str);
-	g_string_free (str, TRUE);
-#endif
-}
-
+#if 0 // TODO (cyphermox): Implement DCB.
 static gboolean
 write_dcb_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-#if 0 // TODO (cyphermox): Implement DCB.
 	NMSettingDcb *s_dcb;
 	NMSettingDcbFlags flags;
 
@@ -1836,10 +1747,10 @@ write_dcb_setting (NMConnection *connection, GOutputStream *netplan, GError **er
 	write_dcb_percent_array (netplan, KEY_DCB_PG_UPPCT, s_dcb, flags, nm_setting_dcb_get_priority_bandwidth);
 	write_dcb_bool_array (netplan, KEY_DCB_PG_STRICT, s_dcb, flags, nm_setting_dcb_get_priority_strict_bandwidth);
 	write_dcb_uint_array (netplan, KEY_DCB_PG_UP2TC, s_dcb, flags, nm_setting_dcb_get_priority_traffic_class);
-#endif
 
 	return TRUE;
 }
+#endif
 
 static void
 write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
@@ -2047,6 +1958,7 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 #endif
 }
 
+#if 0 /* goes with routes!!! */
 static char *
 get_route_attributes_string (NMIPRoute *route, int family)
 {
@@ -2116,7 +2028,9 @@ get_route_attributes_string (NMIPRoute *route, int family)
 
 	return g_string_free (str, FALSE);
 }
+#endif
 
+#if 0 /* temp disable : routes: */
 static GString *
 write_route_settings (NMSettingIPConfig *s_ip)
 {
@@ -2160,11 +2074,12 @@ write_route_settings (NMSettingIPConfig *s_ip)
 
 	return contents;
 }
+#endif
 
+#if 0  // TODO: implement proxy support.
 static gboolean
 write_proxy_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-#if 0  // TODO: implement proxy support.
 	NMSettingProxy *s_proxy;
 	NMSettingProxyMethod method;
 	const char *pac_url, *pac_script;
@@ -2197,9 +2112,9 @@ write_proxy_setting (NMConnection *connection, GOutputStream *netplan, GError **
 	}
 
 	svSetValueBoolean (netplan, "BROWSER_ONLY", nm_setting_proxy_get_browser_only (s_proxy));
-#endif
 	return TRUE;
 }
+#endif
 
 static gboolean
 write_user_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
@@ -2235,10 +2150,10 @@ write_user_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 	return TRUE;
 }
 
+#if 0  // TODO: implement SR-IOV settings
 static void
 write_sriov_setting (NMConnection *connection, GHashTable *netplan)
 {
-#if 0  // TODO: implement SR-IOV settings
 	NMSettingSriov *s_sriov;
 	guint i, num = 0;
 	NMTernary b;
@@ -2266,13 +2181,13 @@ write_sriov_setting (NMConnection *connection, GHashTable *netplan)
 		svSetValueStr (netplan, key, str);
 		g_free (str);
 	}
-#endif
 }
+#endif
 
+#if 0 // TODO: implement TC settings for netplan
 static gboolean
 write_tc_setting (NMConnection *connection, GHashTable *netplan, GError **error)
 {
-#if 0 // TODO: implement TC settings for netplan
 	NMSettingTCConfig *s_tc;
 	guint i, num, n;
 	char tag[64];
@@ -2310,9 +2225,9 @@ write_tc_setting (NMConnection *connection, GHashTable *netplan, GError **error)
 		svSetValueStr (netplan, numbered_tag (tag, "FILTER", n), str);
 		n++;
 	}
-#endif
 	return TRUE;
 }
+#endif
 
 static gboolean
 write_match_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
@@ -2350,10 +2265,10 @@ write_match_setting (NMConnection *connection, GOutputStream *netplan, GError **
 	return TRUE;
 }
 
+#if 0  // TODO: implement DNS options (edns0, etc.)
 static void
 write_res_options (GHashTable *netplan, NMSettingIPConfig *s_ip, const char *var)
 {
-#if 0  // TODO: implement DNS options (edns0, etc.)
 	nm_auto_free_gstring GString *value = NULL;
 	guint i, num_options;
 
@@ -2366,8 +2281,8 @@ write_res_options (GHashTable *netplan, NMSettingIPConfig *s_ip, const char *var
 	}
 
 	svSetValue (netplan, var, value->str);
-#endif
 }
+#endif
 
 static gboolean
 write_ip4_setting (NMConnection *connection,
@@ -2379,16 +2294,17 @@ write_ip4_setting (NMConnection *connection,
 {
 	NMSettingIPConfig *s_ip4;
 	const char *value;
-	char *tmp;
-	char tag[64];
-	int j;
+	//char *tmp;
+	//char tag[64];
+	//int j;
 	guint i, num, n;
-	gint64 route_metric;
-	NMIPRouteTableSyncMode route_table;
-	int priority;
-	int timeout;
+	//gint64 route_metric;
+	//NMIPRouteTableSyncMode route_table;
+	//int priority;
+	//int timeout;
 	const char *method = NULL;
-	gboolean has_netmask;
+	const char *gateway = NULL;
+	//gboolean has_netmask;
 
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
 	method = nm_setting_ip_config_get_method (s_ip4);
@@ -2449,8 +2365,10 @@ write_ip4_setting (NMConnection *connection,
 		                     nm_ip_address_get_address (addr));
 #endif
 
-	g_output_stream_printf(netplan, 0, NULL, NULL,
-	                       "      gateway4: %s\n", nm_setting_ip_config_get_gateway (s_ip4));
+	gateway = nm_setting_ip_config_get_gateway (s_ip4);
+	if (gateway)
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+		                       "      gateway4: %s\n", gateway);
 
 	num = nm_setting_ip_config_get_num_dns (s_ip4);
 	for (i = 0; i < num; i++) {
@@ -2547,14 +2465,15 @@ write_ip4_setting (NMConnection *connection,
 	return TRUE;
 }
 
+#if 0 /* temp disable; write addresses: */
 static void
 write_ip4_aliases (NMConnection *connection, GArray *addresses, const char *base_netplan_path)
 {
 	NMSettingIPConfig *s_ip4;
 	gs_free char *base_netplan_dir = NULL, *base_netplan_name = NULL;
-	const char *base_name;
-	int i, num, base_netplan_name_len, base_name_len;
-	GDir *dir;
+	//const char *base_name;
+	int i, num, base_netplan_name_len; //, base_name_len;
+	//GDir *dir;
 
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
 	if (!s_ip4)
@@ -2577,6 +2496,7 @@ write_ip4_aliases (NMConnection *connection, GArray *addresses, const char *base
 		g_array_append_val(addresses, address);
 	}
 }
+#endif
 
 static void
 write_ip6_setting_dhcp_hostname (NMSettingIPConfig *s_ip6,
@@ -2601,16 +2521,15 @@ write_ip6_setting (NMConnection *connection,
                    GError **error)
 {
 	NMSettingIPConfig *s_ip6;
-	NMSettingIPConfig *s_ip4;
 	const char *value;
-	guint i, num, num4;
-	int priority;
+	guint i, num; //, num4;
+	//int priority;
 	NMIPAddress *addr;
 	const char *dns;
-	gint64 route_metric;
-	NMIPRouteTableSyncMode route_table;
+	//gint64 route_metric;
+	//NMIPRouteTableSyncMode route_table;
 	GString *ip_str;
-	NMSettingIP6ConfigAddrGenMode addr_gen_mode;
+	//NMSettingIP6ConfigAddrGenMode addr_gen_mode;
 
 	s_ip6 = nm_connection_get_setting_ip6_config (connection);
 	if (!s_ip6) {
@@ -2659,7 +2578,7 @@ write_ip6_setting (NMConnection *connection,
 	}
 
 	/* Write out DNS - 'DNS' key is used both for IPv4 and IPv6 */
-	s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	//s_ip4 = nm_connection_get_setting_ip4_config (connection);
 	num = nm_setting_ip_config_get_num_dns (s_ip6);
 	for (i = 0; i < num; i++) {
 		dns = nm_setting_ip_config_get_dns (s_ip6, i);
@@ -2686,10 +2605,12 @@ write_ip6_setting (NMConnection *connection,
 	//svSetValueStr (netplan, "IPV6_FAILURE_FATAL",
 	//               nm_setting_ip_config_get_may_fail (s_ip6) ? "no" : "yes");
 
+#if 0  /* TODO: metric! */
 	route_metric = nm_setting_ip_config_get_route_metric (s_ip6);
 	if (route_metric != -1)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "      metric: %ld\n", route_metric);
+#endif
 
 #if 0
     // TODO: (cyphermox)  Currently can't set what route table in netplan.
@@ -2747,10 +2668,11 @@ static void
 write_ip_routing_rules (NMConnection *connection,
                         GOutputStream *netplan)
 {
-	gsize idx = 0;
+	//gsize idx = 0;
 	int is_ipv4;
+	GString *routing_policy;
 
-	g_output_stream_printf(netplan, 0, NULL, NULL, "      routing-policy:\n");
+	routing_policy = g_string_sized_new (200);
 
 	for (is_ipv4 = 1; is_ipv4 >= 0; is_ipv4--) {
 		const int addr_family = is_ipv4 ? AF_INET : AF_INET6;
@@ -2765,22 +2687,28 @@ write_ip_routing_rules (NMConnection *connection,
 		for (i = 0; i < num; i++) {
 			NMIPRoutingRule *rule = nm_setting_ip_config_get_routing_rule (s_ip, i);
 			gs_free const char *s = NULL;
-			char key[64];
+			//char key[64];
 
-			g_output_stream_printf(netplan, 0, NULL, NULL, "        - to: %s\n",
+			g_string_append_printf(routing_policy, "        - to: %s\n",
 			                       nm_ip_routing_rule_get_to(rule));
-			g_output_stream_printf(netplan, 0, NULL, NULL, "          from: %s\n",
+			g_string_append_printf(routing_policy, "          from: %s\n",
 			                       nm_ip_routing_rule_get_from(rule));
-			g_output_stream_printf(netplan, 0, NULL, NULL, "          table: %d\n",
+			g_string_append_printf(routing_policy, "          table: %d\n",
 			                       nm_ip_routing_rule_get_table(rule));
-			g_output_stream_printf(netplan, 0, NULL, NULL, "          mark: %d\n",
+			g_string_append_printf(routing_policy, "          mark: %d\n",
 			                       nm_ip_routing_rule_get_fwmark(rule));
-			g_output_stream_printf(netplan, 0, NULL, NULL, "          type-of-service: %d\n",
+			g_string_append_printf(routing_policy, "          type-of-service: %d\n",
 			                       nm_ip_routing_rule_get_tos(rule));
-			g_output_stream_printf(netplan, 0, NULL, NULL, "          priority: %ld\n",
+			g_string_append_printf(routing_policy, "          priority: %ld\n",
 			                       nm_ip_routing_rule_get_priority(rule));
 		}
 	}
+
+	if (routing_policy->len > 0)
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+		                       "      routing-policy:\n%s", routing_policy->str);
+
+	g_string_free (routing_policy, TRUE);
 }
 
 static gboolean
@@ -2789,14 +2717,19 @@ do_write_construct (NMConnection *connection,
                     GError **error)
 {
 	NMSettingConnection *s_con;
-	NMSettingIPConfig *s_ip6;
-	NMSettingIPConfig *s_ip4;
+	//NMSettingIPConfig *s_ip4;
+	//NMSettingIPConfig *s_ip6;
 	const gchar *type = NULL;
 	GArray *addresses, *nameservers, *searches;
 	GHashTable *dhcp_overrides;
 
 	nm_assert (NM_IS_CONNECTION (connection));
 	nm_assert (_nm_connection_verify (connection, NULL) == NM_SETTING_VERIFY_SUCCESS);
+
+	addresses = g_array_new (TRUE, FALSE, sizeof(char *));
+	nameservers = g_array_new (TRUE, FALSE, sizeof(char *));
+	searches = g_array_new (TRUE, FALSE, sizeof(char *));
+	dhcp_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 
 	if (!nms_netplan_writer_can_write_connection (connection, error))
 		return FALSE;
@@ -2810,6 +2743,9 @@ do_write_construct (NMConnection *connection,
 		return FALSE;
 	}
 
+	g_output_stream_printf (netplan, 0, NULL, NULL,
+			        "network:\n  version: 2\n  renderer: NetworkManager\n");
+
 	if (!strcmp (type, NM_SETTING_WIRED_SETTING_NAME)) {
 		// FIXME: can't write PPPoE at this time
 		if (nm_connection_get_setting_pppoe (connection)) {
@@ -2819,24 +2755,49 @@ do_write_construct (NMConnection *connection,
 			return FALSE;
 		}
 
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  ethernets:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
 		if (!write_wired_setting (connection, netplan, error))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_VLAN_SETTING_NAME)) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  vlans:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
 		if (!write_vlan_setting (connection, netplan, error))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_WIRELESS_SETTING_NAME)) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  wifis:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
 		if (!write_wireless_setting (connection, netplan, error))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_INFINIBAND_SETTING_NAME)) {
+#if 0
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  ethernets:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
 		if (!write_infiniband_setting (connection, netplan, error))
+#endif
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_BOND_SETTING_NAME)) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  bonds:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
 		if (!write_bond_setting (connection, netplan, error))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_TEAM_SETTING_NAME)) {
+#if 0
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  ethernets:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
 		if (!write_team_setting (connection, netplan, error))
+#endif
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_BRIDGE_SETTING_NAME)) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  bridges:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
 		if (!write_bridge_setting (connection, netplan, error))
 			return FALSE;
 	} else {
@@ -2871,8 +2832,8 @@ do_write_construct (NMConnection *connection,
 	//if (!write_tc_setting (connection, netplan, error))
 	//	return FALSE;
 
-	s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	s_ip6 = nm_connection_get_setting_ip6_config (connection);
+	//s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	//s_ip6 = nm_connection_get_setting_ip6_config (connection);
 
 	if (!write_ip4_setting (connection,
 	                        netplan,
@@ -2911,10 +2872,12 @@ do_write_to_disk (NMConnection *connection,
                   GString *route6_content,
                   GError **error)
 {
+	gboolean ret = FALSE;
 	/* From here on, we persist data to disk. Before, it was all in-memory
 	 * only. But we loaded the netplan files from disk, and managled our
 	 * new settings (in-memory). */
 
+	ret = g_output_stream_close (netplan, NULL, error);
 #if 0  // TODO: (cyphermox) Do actually write everything together to disk...
 	if (!svWriteFile (netplan, 0644, error))
 		return FALSE;
@@ -2930,7 +2893,7 @@ do_write_to_disk (NMConnection *connection,
 	}
 #endif
 
-	return TRUE;
+	return ret;
 }
 
 gboolean
@@ -2945,13 +2908,46 @@ nms_netplan_writer_write_connection (NMConnection *connection,
                                      GError **error)
 {
 	GOutputStream *netplan;
-	gboolean ret = TRUE;
+	//gboolean ret = TRUE;
 	nm_auto_free_gstring GString *route_content = NULL;
+	nm_auto_free_gstring GString *filename_str = NULL;
 	gboolean route_ignore = FALSE;
 	gs_unref_hashtable GHashTable *secrets = NULL;
 	gs_unref_hashtable GHashTable *blobs = NULL;
+	GFile *netplan_yaml;
+	char *netplan_yaml_path;
 
 	nm_assert (!out_reread || !*out_reread);
+
+
+	if (!filename) {
+		filename_str = g_string_sized_new (120);
+		g_string_printf (filename_str, "NM-%s.yaml", nm_connection_get_uuid (connection));
+
+		netplan_yaml_path = g_build_filename (netplan_dir,
+		                                      filename_str->str,
+		                                      NULL);
+	} else {
+		netplan_yaml_path = g_strdup(filename);
+	}
+
+	netplan_yaml = g_file_new_for_path (netplan_yaml_path);
+	_LOGT ("write: path %s / %s / %p", netplan_dir, g_file_get_path(netplan_yaml),
+				out_filename);
+
+	if (out_filename && !filename)
+		*out_filename = g_file_get_path(netplan_yaml);
+
+	netplan = (GOutputStream *) g_file_replace (netplan_yaml,
+	                                            NULL, FALSE,
+	                                            G_FILE_CREATE_REPLACE_DESTINATION,
+				                    NULL,
+				                    error);
+	if (error && *error)
+		_LOGT ("netplan: %s", (*error)->message);
+		
+	if (!netplan)
+		return FALSE;
 
 	if (!do_write_construct (connection,
 	                         netplan,
@@ -2972,6 +2968,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	                       error))
 		return FALSE;
 
+#if 0
 	/* Note that we just wrote the connection to disk, and re-read it from there.
 	 * That is racy if somebody else modifies the connection.
 	 * That race is why we must not tread a failure to re-read the profile
@@ -3019,6 +3016,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	/* Only return the filename if this was a newly written netplan */
 	if (out_filename && !filename)
 		*out_filename = g_strdup (filename);
+#endif
 
 	return TRUE;
 }

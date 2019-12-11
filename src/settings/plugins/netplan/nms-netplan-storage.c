@@ -50,9 +50,9 @@ nms_netplan_storage_copy_content (NMSNetplanStorage *dst,
 	nm_assert (dst->storage_type == src->storage_type);
 	nm_assert (dst->is_meta_data == src->is_meta_data);
 
-	gs_unref_object NMConnection *connection_to_free = NULL;
+	//NMConnection *connection_to_free;
 
-	connection_to_free = g_steal_pointer (&dst->u.conn_data.connection);
+	//connection_to_free = g_steal_pointer (&dst->u.conn_data.connection);
 	dst->u.conn_data = src->u.conn_data;
 	nm_g_object_ref (dst->u.conn_data.connection);
 }
