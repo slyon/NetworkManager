@@ -700,7 +700,7 @@ write_wireless_security_setting (NMConnection *connection,
 					key_valid = FALSE;
 				}
 
-				// FIXME: use set_secret??
+				// TODO: use set_secret??
 				if (key_valid) {
 					g_output_stream_printf(netplan, 0, NULL, NULL,
 							       "          password: %s\n", key);
@@ -847,7 +847,7 @@ write_wireless_setting (NMConnection *connection,
 	/* If the SSID contains any non-printable characters, we need to use the
 	 * hex notation of the SSID instead.
 	 */
-	// XXX (cyphermox): Is this true for netplan? Do we support this correctly?
+	// TODO: Make sure SSID with non-printable is well supported in netplan
 	if (   ssid_len > 2
 	    && ssid_data[0] == '0'
 	    && ssid_data[1] == 'x') {
@@ -1120,7 +1120,7 @@ write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **
 	return TRUE;
 }
 
-#if 0 // TODO (cyphermox): add support for ethtool settings in netplan
+#if 0 // TODO: add support for ethtool settings in netplan
 static gboolean
 write_ethtool_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
@@ -1275,7 +1275,7 @@ write_wired_for_virtual (NMConnection *connection, GOutputStream *netplan)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 				        "      mac-address: %s\n", cloned_mac);
 
-		// TODO: (cyphermox) suport generate_mac_address_mask 
+		// TODO: support generate_mac_address_mask
 		//svSetValueStr (netplan, "GENERATE_MAC_ADDRESS_MASK",
 		//               nm_setting_wired_get_generate_mac_address_mask (s_wired));
 
@@ -1309,7 +1309,7 @@ write_vlan_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 	g_output_stream_printf (netplan, 0, NULL, NULL,
 			        "      link: %s\n", nm_setting_vlan_get_parent (s_vlan));
 
-#if 0  /* TODO: (cyphermox) add support for vlan flags / advanced settings */
+#if 0  /* TODO: add support for vlan flags / advanced settings */
 	vlan_flags = nm_setting_vlan_get_flags (s_vlan);
 	svSetValueBoolean (netplan, "REORDER_HDR", NM_FLAGS_HAS (vlan_flags, NM_VLAN_FLAG_REORDER_HEADERS));
 	svSetValueBoolean (netplan, "GVRP", NM_FLAGS_HAS (vlan_flags, NM_VLAN_FLAG_GVRP));
@@ -1410,7 +1410,7 @@ write_bond_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 	return TRUE;
 }
 
-#if 0 // TODO (cyphermox): implement team devices in netplan
+#if 0 // TODO: implement team devices in netplan
 static gboolean
 write_team_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
@@ -1476,7 +1476,7 @@ write_bridge_vlans (NMSetting *setting,
                     const char *key,
                     GError **error)
 {
-#if 0 // TODO (cyphermox): Implement brdige VLANs printif settings.
+#if 0 // TODO: Implement bridge VLANs printif settings.
 	gs_unref_ptrarray GPtrArray *vlans = NULL;
 	NMBridgeVlan *vlan;
 	GString *string;
@@ -1636,7 +1636,7 @@ write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GEr
 		g_string_append_printf (string, "        path-cost: %u", i);
 	}
 
-#if 0 // TODO (cyphermox): hairpin mode support in networkd/netplan
+#if 0 // TODO: need hairpin mode support in networkd/netplan
 	if (nm_setting_bridge_port_get_hairpin_mode (s_port)) {
 		if (string->len)
 			g_string_append_c (string, ' ');
@@ -1659,7 +1659,7 @@ write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GEr
 	return TRUE;
 }
 
-#if 0 // TODO (cyphermox): TEAM port settings.
+#if 0 // TODO: implement Team port settings.
 static gboolean
 write_team_port_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
@@ -1677,7 +1677,7 @@ write_team_port_setting (NMConnection *connection, GOutputStream *netplan, GErro
 }
 #endif
 
-#if 0 // TODO (cyphermox): Implement DCB.
+#if 0 // TODO: Implement DCB.
 static gboolean
 write_dcb_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
@@ -1820,7 +1820,7 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 	g_hash_table_insert (netplan, "LLDP", tmp);
 #endif
 
-#if 0 // TODO (cyphermox): handle user permissions for connections
+#if 0 // TODO: handle user permissions for connections
 	/* Permissions */
 	g_hash_table_insert (netplan, "USERS");
 	n = nm_setting_connection_get_num_permissions (s_con);
@@ -1881,7 +1881,7 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 	}
 #endif
 
-#if 0 // TODO (cyphermox): use devicetype code for bridgeport detection
+#if 0 // TODO: use devicetype code for bridgeport detection
 	if (nm_streq0 (type, NM_SETTING_TEAM_SETTING_NAME))
 		g_hash_table_insert (netplan, "DEVICETYPE", TYPE_TEAM);
 	else if (master_iface && nm_setting_connection_is_slave_type (s_con, NM_SETTING_TEAM_SETTING_NAME))
@@ -2119,7 +2119,7 @@ write_proxy_setting (NMConnection *connection, GOutputStream *netplan, GError **
 static gboolean
 write_user_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-#if 0  // TODO: (cyphermox)  implement user permission settings stat.
+#if 0  // TODO: implement user permission settings
 	NMSettingUser *s_user;
 	guint i, len;
 	const char *const*keys;
@@ -2318,13 +2318,13 @@ write_ip4_setting (NMConnection *connection,
 	if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_AUTO))
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "      dhcp4: yes\n");
-#if 0
+#if 0  /* TODO: implement setting statically assigned IPs: append to GArray for addresses */
 	else if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_MANUAL)) {
 		// Static addresses addressed below.
 	} else if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_LINK_LOCAL))
 		link_local &= 0x2;
 	else if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_SHARED))
-		// FIXME: (cyphermox) implement connection sharing.
+		// TODO: implement connection sharing.
 #endif
 
 	/* Write out IPADDR<n>, PREFIX<n>, GATEWAY<n> for current IP addresses
@@ -2353,9 +2353,9 @@ write_ip4_setting (NMConnection *connection,
 		g_array_append_val (addresses, value);
 	}
 
-#if 0
+#if 0  /* TODO: improve routes handling */
 		routes = g_array_new(...)
-	    // (cyphermox) Routes -> split up into routes section
+	    // Routes -> split up into routes section
 	    // routes = g_array_new (...)
 	    // ...
 	    // g_hash_table_insert (netplan, "routes", <routes>)
@@ -2388,8 +2388,7 @@ write_ip4_setting (NMConnection *connection,
 		}
 	}
 
-	// TODO: (cyphermox) dhcp overrides in part here...
-#if 0  // TODO: (cyphermox) def-route toggles and peer, dhcp settings.
+#if 0  // TODO: default-route toggles and peer, dhcp settings.
 	/* DEFROUTE; remember that it has the opposite meaning from never-default */
 	svSetValueBoolean (netplan, "DEFROUTE", !nm_setting_ip_config_get_never_default (s_ip4));
 
@@ -2541,26 +2540,26 @@ write_ip6_setting (NMConnection *connection,
 	if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_IGNORE)) {
 		return TRUE;
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_DISABLED)) {
-		// TODO: (cyphermox) set optional
+		// TODO: set optional flag in netplan
 		return TRUE;
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_AUTO)) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "      dhcp6: yes\n");
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_DHCP)) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "      dhcp6: yes\n");
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_MANUAL)) {
-		// TODO: (cyphermox) implement addresses: [] separately; below
+		// TODO: implement addresses: [] separately; below
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL)) {
-		// TODO: (cyphermox) set optional
+		// TODO: set optional flag in netplan
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_SHARED)) {
-		// TODO: (cyphermox) implement sharing
+		// TODO: implement sharing
 	}
 
-	// TODO: (cyphermox) not in netplan yet (DUID)
+	// TODO: implement DUID selection in netplan
 	//svSetValueStr (netplan, "DHCPV6_DUID",
 	//               nm_setting_ip6_config_get_dhcp_duid (NM_SETTING_IP6_CONFIG (s_ip6)));
 
 	write_ip6_setting_dhcp_hostname (s_ip6, dhcp_overrides);
-	// TODO: (cyphermox) write out dhcp_overrides to GOutputStream
+	// TODO: Write out dhcp_overrides to GOutputStream
 
 	/* Write out IP addresses */
 	num = nm_setting_ip_config_get_num_addresses (s_ip6);
@@ -2601,11 +2600,11 @@ write_ip6_setting (NMConnection *connection,
 		g_output_stream_printf(netplan, 0, NULL, NULL, "        use-routes: no\n");
 	}
 
-	// TODO: (cyphermox)  more about "optional" (see above)
+	// TODO: more about "optional" (see above)
 	//svSetValueStr (netplan, "IPV6_FAILURE_FATAL",
 	//               nm_setting_ip_config_get_may_fail (s_ip6) ? "no" : "yes");
 
-#if 0  /* TODO: metric! */
+#if 0  /* TODO: Implement proper writing of the metric value to netplan YAML */
 	route_metric = nm_setting_ip_config_get_route_metric (s_ip6);
 	if (route_metric != -1)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
@@ -2613,8 +2612,8 @@ write_ip6_setting (NMConnection *connection,
 #endif
 
 #if 0
-    // TODO: (cyphermox)  Currently can't set what route table in netplan.
-    // Implement RouteTable= (networkd)  for DHCP.
+    // TODO: Implement this route as a formal route (rather than gatewayN) to set route table
+    // TODO: Implement RouteTable= (networkd)  for DHCP.
 
 	route_table = nm_setting_ip_config_get_route_table (s_ip6);
 	svSetValueInt64_cond (netplan,
@@ -2626,7 +2625,7 @@ write_ip6_setting (NMConnection *connection,
 	/* IPv6 Privacy Extensions */
 	switch (nm_setting_ip6_config_get_ip6_privacy (NM_SETTING_IP6_CONFIG (s_ip6))) {
 	case NM_SETTING_IP6_CONFIG_PRIVACY_PREFER_PUBLIC_ADDR:
-		// FIXME: not implemented; use the temporary always.
+		// TODO: not implemented; for now fallback to always use temporary
 	case NM_SETTING_IP6_CONFIG_PRIVACY_PREFER_TEMP_ADDR:
 		g_output_stream_printf(netplan, 0, NULL, NULL, "      ipv6-privacy: yes\n");
 	break;
@@ -2635,7 +2634,7 @@ write_ip6_setting (NMConnection *connection,
 	}
 
 #if 0
-    // TODO: (cyphermox) Address generation and interface identified. (not in netplan yet)
+    // TODO: Support address generation and interface identified. (not in netplan yet)
 	/* IPv6 Address generation mode */
 	addr_gen_mode = nm_setting_ip6_config_get_addr_gen_mode (NM_SETTING_IP6_CONFIG (s_ip6));
 	if (addr_gen_mode != NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64) {
@@ -2650,7 +2649,7 @@ write_ip6_setting (NMConnection *connection,
 	svSetValueStr (netplan, "IPV6_TOKEN", value);
 #endif
 
-    // TODO: (cyphermox) Implement priority for connections
+    // TODO: Implement priority for connections (probably NM-specific)
 #if 0
 	priority = nm_setting_ip_config_get_dns_priority (s_ip6);
 	if (priority)
@@ -2747,7 +2746,7 @@ do_write_construct (NMConnection *connection,
 			        "network:\n  version: 2\n  renderer: NetworkManager\n");
 
 	if (!strcmp (type, NM_SETTING_WIRED_SETTING_NAME)) {
-		// FIXME: can't write PPPoE at this time
+		// TODO: Implement PPPoE support.
 		if (nm_connection_get_setting_pppoe (connection)) {
 			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
 			             "Can't write connection type '%s'",
@@ -2878,20 +2877,7 @@ do_write_to_disk (NMConnection *connection,
 	 * new settings (in-memory). */
 
 	ret = g_output_stream_close (netplan, NULL, error);
-#if 0  // TODO: (cyphermox) Do actually write everything together to disk...
-	if (!svWriteFile (netplan, 0644, error))
-		return FALSE;
-
-	if (!write_blobs (blobs, error))
-		return FALSE;
-
-	if (!write_secrets (netplan, secrets, error))
-		return FALSE;
-
-	if (route_ignore) {
-		// TODO: write out ignore routes settings
-	}
-#endif
+        // TODO: Do we need to take more steps to ensure writes to disk?
 
 	return ret;
 }
