@@ -51,6 +51,8 @@ utils_should_ignore_file (const char *filename, gboolean only_netplan)
 	base = g_path_get_basename (filename);
 
 	// TODO: Implement any file ignore logic necessary?
+        //       We probably want to ignore any file not ending in .yaml,
+        //       as netplan itself does.
 
 	return FALSE;
 }
@@ -128,6 +130,8 @@ utils_has_complex_routes (const char *filename, int addr_family)
 	g_return_val_if_fail (filename, TRUE);
 
 	// TODO: Do we need to handle complex routes specially??
+        //       This might just be fluff unneeded since I cribbed the code
+        //       from ifcfg-rh.
 
 	return FALSE;
 }
@@ -169,7 +173,6 @@ utils_detect_netplan_path (const char *path, gboolean only_netplan)
 	if (only_netplan)
 		return NULL;
 
-	// TODO: utils_get_netplan_path (path) ???
 	return NULL;
 }
 

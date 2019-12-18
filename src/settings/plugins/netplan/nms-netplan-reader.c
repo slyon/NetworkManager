@@ -169,7 +169,7 @@ check_if_bond_slave (NetplanNetDefinition *nd,
 }
 #endif
 
-#if 0  /* TODO: Team support  */
+#if 0  /* TODO: Implement (read) Team support  */
 static void
 check_if_team_slave (NetplanNetDefinition *nd,
                      NMSettingConnection *s_con)
@@ -326,7 +326,7 @@ make_connection_setting (const char *file,
 	nm_clear_g_free (&value);
 #endif
 
-#if 0  /* TODO: Support ZONE, Secondary UUIDs, etc. */
+#if 0  /* TODO: Support ZONE (firewall), Secondary UUIDs, etc. */
 	v = svGetValueStr (netplan, "ZONE", &value);
 	g_object_set (s_con, NM_SETTING_CONNECTION_ZONE, v, NULL);
 
@@ -388,7 +388,7 @@ make_connection_setting (const char *file,
 	nm_clear_g_free (&value);
 #endif  /* OVS support */
 
-#if 0  /* TODO: more random settings NM-specific */
+#if 0  /* TODO: more random settings that are NM-specific */
 	v = svGetValueStr (netplan, "GATEWAY_PING_TIMEOUT", &value);
 	if (v) {
 		gint64 tmp;
@@ -482,7 +482,7 @@ read_ip4_address (NetplanNetDefinition *nd,
 	nm_assert (tag);
 	nm_assert (!error || !*error);
 
-	// TODO: Parse through the GArray of addresses and pick just the ipv4
+	// TODO: Parse through the GArray of addresses and pick just the ipv4 (static addresses)
 
 	return TRUE;
 }
@@ -875,7 +875,7 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 		PARSE_WARNING ("GATEWAY will be ignored when DEFROUTE is disabled");
 #endif
 
-#if 0  /* TODO: Set up method SHARED. */
+#if 0  /* TODO: Implement read for connection sharing. */
 	/* We used to skip saving a lot of unused properties for the ipv4 shared method.
 	 * We want now to persist them but... unfortunately loading DNS or DOMAIN options
 	 * would cause a fail in the ipv4 verify() function. As we don't want any regression
@@ -927,7 +927,7 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	parse_dns_options (s_ip4, dns_options);
 #endif /* shared */
 
-#if 0  /* TODO: DNS prio, routes */
+#if 0  /* TODO: DNS priority, routes */
 	/* DNS priority */
 	priority = svGetValueInt64 (netplan, "IPV4_DNS_PRIORITY", 10, G_MININT32, G_MAXINT32, 0);
 	g_object_set (s_ip4,
@@ -1109,7 +1109,6 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 				method = NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL;
 		}
 	}
-	/* TODO - handle other methods */
 
 	/* Read IPv6 Privacy Extensions configuration */
 	nm_clear_g_free (&value);
@@ -1137,7 +1136,7 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	}
 #endif  /* ipv6 methods and settings */
 
-	// TODO: make a real s_ip6 object
+	// TODO: make a real s_ip6 object (map from the real values, not just DHCP)
 	g_object_set (s_ip6,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_DNS, FALSE,
@@ -1156,7 +1155,7 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 		return NM_SETTING (g_steal_pointer (&s_ip6));
 #endif
 
-#if 0  /* TODO: IPv6 DUID, hostname and special DHCP options */
+#if 0  /* TODO: Implement IPv6 DUID, hostname and special DHCP options */
 	nm_clear_g_free (&value);
 	v = svGetValueStr (netplan, "DHCPV6_DUID", &value);
 	if (v)
@@ -1322,9 +1321,10 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	return NM_SETTING (g_steal_pointer (&s_ip6));
 }
 
-/* TODO: SRIOV */
-/* TODO: TC support */
-/* TODO: DCB support */
+/* TODO: Implement SRIOV support */
+/* TODO: Implement TC support */
+/* TODO: Implement DCB support */
+/* There is useful code to look at in ifcfg-rh plugin ~cyphermox */
 
 
 static gboolean
@@ -1379,7 +1379,7 @@ make_wep_setting (NetplanNetDefinition *nd,
 	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_WEP_TX_KEYIDX, 0, NULL);
 
 	/* Read WEP key flags */
-	// TODO: secret flags.
+	// TODO: read wifi WEP secret flags.
 	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_WEP_KEY_FLAGS, NM_SETTING_SECRET_FLAG_NONE, NULL);
 
 	g_object_set (G_OBJECT (s_wsec),
@@ -1407,7 +1407,7 @@ fill_wpa_ciphers (NetplanNetDefinition *nd,
 	const char *const *iter;
 	int i = 0;
 
-#if 0  /* TODO: WPA ciphers */
+#if 0  /* TODO: WPA ciphers selection (not yet in netplan) */
 	p = svGetValueStr (netplan, group ? "CIPHER_GROUP" : "CIPHER_PAIRWISE", &value);
 	if (!p)
 		return TRUE;
@@ -1491,7 +1491,7 @@ fill_8021x (NetplanNetDefinition *nd,
 
 	s_8021x = (NMSetting8021x *) nm_setting_802_1x_new ();
 
-	// TODO: implement 802.1x reading from hashtable keys
+	// TODO: read 802.1x settings from hashtable keys (just mapping values already in netplan structures)
 
 	return g_steal_pointer (&s_8021x);
 }
@@ -1982,7 +1982,7 @@ make_bond_setting (NetplanNetDefinition *nd,
 
 	s_bond = NM_SETTING_BOND (nm_setting_bond_new ());
 
-	/* TODO: map bond_params fields to NM_SETTING_BOND fields */
+	/* TODO: map the other bond_params fields to NM_SETTING_BOND fields */
 #if 0
    struct {
         char* lacp_rate;
@@ -2486,7 +2486,7 @@ create_unhandled_connection (const char *filename, NetplanNetDefinition *nd,
 }
 
 
-// TODO: trash, for testing only...
+// XXX: This is debug code only, get rid of it before upstreaming.
 static void
 netplan_ht_debug (gpointer key,
                   gpointer value,
