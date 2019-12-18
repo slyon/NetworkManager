@@ -1717,12 +1717,11 @@ make_wireless_setting (NetplanNetDefinition *nd,
 
 		g_object_set (s_wireless, NM_SETTING_WIRELESS_SSID, bytes, NULL);
 
-		/* FIXME: Use netplan parse.h DEFINEs instead of hard-coded values */
-		if (ap->mode == 0) {
+		if (ap->mode == NETPLAN_WIFI_MODE_INFRASTRUCTURE) {
 			mode = "infrastructure";
-		} else if (ap->mode == 1) {
+		} else if (ap->mode == NETPLAN_WIFI_MODE_ADHOC) {
 			mode = "adhoc";
-		} else if (ap->mode == 2) {
+		} else if (ap->mode == NETPLAN_WIFI_MODE_AP) {
 			mode = "ap";
 		} else {
 			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
