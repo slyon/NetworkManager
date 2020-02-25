@@ -1685,6 +1685,10 @@ nm_utils_strdup_reset (char **dst, const char *src)
 
 /*****************************************************************************/
 
+gsize nm_utils_get_next_realloc_size (gboolean true_realloc, gsize requested);
+
+/*****************************************************************************/
+
 typedef enum {
 	NMU_IFACE_ANY,
 	NMU_IFACE_KERNEL,
