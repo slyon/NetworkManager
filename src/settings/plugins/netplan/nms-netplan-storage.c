@@ -197,6 +197,19 @@ nms_netplan_storage_new_connection (NMSNetplanPlugin *plugin,
 static void
 _storage_clear (NMSNetplanStorage *self)
 {
+	const char *netplan_yaml_path;
+	GFile *netplan_yaml;
+	GError *error = NULL;
+
+	/* Make sure that the related netplan .yaml config file gets removed. */
+	netplan_yaml_path = nms_netplan_storage_get_filename (self);
+	if (g_file_test (full_filename, G_FILE_TEST_EXISTS)) {
+		netplan_yaml = g_file_new_for_path (netplan_yaml_path);
+		g_file_delete (netplan_yaml, NULL, &error);
+		if (error && *error)
+			_LOGT ("netplan: %s", (*error)->message);
+	}
+	
 	c_list_unlink (&self->parent._storage_lst);
 	c_list_unlink (&self->parent._storage_by_uuid_lst);
 	g_clear_object (&self->u.conn_data.connection);
