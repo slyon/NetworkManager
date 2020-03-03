@@ -1326,6 +1326,69 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 /* TODO: Implement DCB support */
 /* There is useful code to look at in ifcfg-rh plugin ~cyphermox */
 
+#if 0 /* TODO: It looks like we don't really support WEP right now */
+static gboolean
+add_one_wep_key (NetplanNetDefinition *nd,
+                 const char *shvar_key,
+                 guint8 key_idx,
+                 gboolean passphrase,
+                 NMSettingWirelessSecurity *s_wsec,
+                 GError **error)
+{
+	gs_free char *value_free = NULL;
+	const char *value;
+	const char *key = NULL;
+
+	g_return_val_if_fail (nd != NULL, FALSE);
+	g_return_val_if_fail (shvar_key != NULL, FALSE);
+	g_return_val_if_fail (key_idx <= 3, FALSE);
+	g_return_val_if_fail (s_wsec != NULL, FALSE);
+
+	value = svGetValueStr (ifcfg, shvar_key, &value_free);
+	if (!value)
+		return TRUE;
+
+	/* Validate keys */
+	if (passphrase) {
+		if (value[0] && strlen (value) < 64)
+			key = value;
+	} else {
+		if (NM_IN_SET (strlen (value), 10, 26)) {
+			/* Hexadecimal WEP key */
+			if (NM_STRCHAR_ANY (value, ch, !g_ascii_isxdigit (ch))) {
+				g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+				             "Invalid hexadecimal WEP key.");
+				return FALSE;
+			}
+			key = value;
+		} else if (   !strncmp (value, "s:", 2)
+		           && NM_IN_SET (strlen (value), 7, 15)) {
+			/* ASCII key */
+			if (NM_STRCHAR_ANY (value + 2, ch, !g_ascii_isprint (ch))) {
+				g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+				             "Invalid ASCII WEP key.");
+				return FALSE;
+			}
+
+			/* Remove 's:' prefix.
+			 * Don't convert to hex string. wpa_supplicant takes 'wep_key0' option over D-Bus as byte array
+			 * and converts it to hex string itself. Even though we convert hex string keys into a bin string
+			 * before passing to wpa_supplicant, this prevents two unnecessary conversions. And mainly,
+			 * ASCII WEP key doesn't change to HEX WEP key in UI, which could confuse users.
+			 */
+			key = value + 2;
+		}
+	}
+
+	if (!key) {
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+		             "Invalid WEP key length.");
+		return FALSE;
+	}
+
+	nm_setting_wireless_security_set_wep_key (s_wsec, key_idx, key);
+	return TRUE;
+}
 
 static gboolean
 read_wep_keys (NetplanNetDefinition *nd,
@@ -1335,31 +1398,32 @@ read_wep_keys (NetplanNetDefinition *nd,
                GError **error)
 {
 	if (key_type != NM_WEP_KEY_TYPE_PASSPHRASE) {
-		if (!add_one_wep_key (netplan, "KEY1", 0, FALSE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY1", 0, FALSE, s_wsec, error))
 			return FALSE;
-		if (!add_one_wep_key (netplan, "KEY2", 1, FALSE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY2", 1, FALSE, s_wsec, error))
 			return FALSE;
-		if (!add_one_wep_key (netplan, "KEY3", 2, FALSE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY3", 2, FALSE, s_wsec, error))
 			return FALSE;
-		if (!add_one_wep_key (netplan, "KEY4", 3, FALSE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY4", 3, FALSE, s_wsec, error))
 			return FALSE;
-		if (!add_one_wep_key (netplan, "KEY", def_idx, FALSE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY", def_idx, FALSE, s_wsec, error))
 			return FALSE;
 	}
 
 	if (key_type != NM_WEP_KEY_TYPE_KEY) {
-		if (!add_one_wep_key (netplan, "KEY_PASSPHRASE1", 0, TRUE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY_PASSPHRASE1", 0, TRUE, s_wsec, error))
 			return FALSE;
-		if (!add_one_wep_key (netplan, "KEY_PASSPHRASE2", 1, TRUE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY_PASSPHRASE2", 1, TRUE, s_wsec, error))
 			return FALSE;
-		if (!add_one_wep_key (netplan, "KEY_PASSPHRASE3", 2, TRUE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY_PASSPHRASE3", 2, TRUE, s_wsec, error))
 			return FALSE;
-		if (!add_one_wep_key (netplan, "KEY_PASSPHRASE4", 3, TRUE, s_wsec, error))
+		if (!add_one_wep_key (nd, "KEY_PASSPHRASE4", 3, TRUE, s_wsec, error))
 			return FALSE;
 	}
 
 	return TRUE;
 }
+#endif
 
 static NMSetting *
 make_wep_setting (NetplanNetDefinition *nd,
@@ -1368,9 +1432,9 @@ make_wep_setting (NetplanNetDefinition *nd,
 {
 	gs_unref_object NMSettingWirelessSecurity *s_wsec = NULL;
 	gs_free char *value = NULL;
-	int default_key_idx   = 0;
-	gboolean has_defaul  t_key = FALSE;
-	NMSettingSecretFlag  s key_flags;
+	//int default_key_idx = 0;
+	//gboolean has_default_key = FALSE;
+	//NMSettingSecretFlags key_flags;
 
 	s_wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
 	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "none", NULL);
@@ -1401,13 +1465,13 @@ fill_wpa_ciphers (NetplanNetDefinition *nd,
                   gboolean group,
                   gboolean adhoc)
 {
+#if 0  /* TODO: WPA ciphers selection (not yet in netplan) */
 	gs_free char *value = NULL;
 	const char *p;
 	gs_free const char **list = NULL;
 	const char *const *iter;
 	int i = 0;
 
-#if 0  /* TODO: WPA ciphers selection (not yet in netplan) */
 	p = svGetValueStr (netplan, group ? "CIPHER_GROUP" : "CIPHER_PAIRWISE", &value);
 	if (!p)
 		return TRUE;
@@ -1507,15 +1571,14 @@ make_wpa_setting (NetplanNetDefinition *nd,
 	gs_unref_object NMSettingWirelessSecurity *wsec = NULL;
 	gs_free char *value = NULL;
 	const char *v;
-	gboolean wpa_psk = FALSE, wpa_sae = FALSE, wpa_eap = FALSE, ieee8021x = FALSE;
-	int i_val;
+	//int i_val;
 	GError *local = NULL;
 
 	wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
 
 	if (nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
 		&& nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_WPA_EAP
-		&& nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_WPA_8021X)
+		&& nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_8021X)
 		return NULL; /* Not WPA or Dynamic WEP */
 
 #if 0  /* TODO: support WPS */
@@ -1532,9 +1595,9 @@ make_wpa_setting (NetplanNetDefinition *nd,
 
 	/* Pairwise and Group ciphers (only relevant for WPA/RSN) */
 	if (nd->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
-		|| nd->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_EAP) {
-		fill_wpa_ciphers (netplan, wsec, FALSE, adhoc);
-		fill_wpa_ciphers (netplan, wsec, TRUE, adhoc);
+		|| nd->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_EAP) {
+		fill_wpa_ciphers (nd, wsec, FALSE, adhoc);
+		fill_wpa_ciphers (nd, wsec, TRUE, adhoc);
 	}
 
 	/* Adhoc only supports RSN */
@@ -1542,8 +1605,16 @@ make_wpa_setting (NetplanNetDefinition *nd,
 		nm_setting_wireless_security_add_proto (wsec, "wpa");
 	nm_setting_wireless_security_add_proto (wsec, "rsn");
 
-	if (nd->auth.password)
-		g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_PSK, nd->auth.password, NULL);
+	if (nd->auth.password) {
+		gs_free char *psk = NULL;
+		psk = parse_wpa_psk (nd, file, ssid, &local);
+		if (psk)
+			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_PSK, psk, NULL);
+		else if (local) {
+			g_propagate_error (error, local);
+			return NULL;
+		}
+	}
 
 	if (nd->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK)
 		g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
@@ -1551,7 +1622,7 @@ make_wpa_setting (NetplanNetDefinition *nd,
 		g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap", NULL);
 	}
 
-	*s_8021x = fill_8021x (netplan, file, v, TRUE, error);
+	*s_8021x = fill_8021x (nd, file, v, TRUE, error);
 	if (!*s_8021x)
 		return NULL;
 
@@ -1643,13 +1714,13 @@ make_wireless_security_setting (NetplanNetDefinition *nd,
 	}
 #endif
 
-	wsec = make_wpa_setting (netplan, file, ssid, adhoc, s_8021x, error);
+	wsec = make_wpa_setting (nd, file, ssid, adhoc, s_8021x, error);
 	if (wsec)
 		return wsec;
 	else if (*error)
 		return NULL;
 
-	wsec = make_wep_setting (netplan, file, error);
+	wsec = make_wep_setting (nd, file, error);
 	if (wsec)
 		return wsec;
 	else if (*error)
@@ -1789,11 +1860,13 @@ wireless_connection_from_netplan (const char *file,
 	NMConnection *connection = NULL;
 	NMSetting *con_setting = NULL;
 	NMSetting *wireless_setting = NULL;
-	//NMSetting8021x *s_8021x = NULL;
+	NMSetting8021x *s_8021x = NULL;
 	GBytes *ssid;
-	//NMSetting *security_setting = NULL;
+	NMSetting *security_setting = NULL;
 	gs_free char *ssid_utf8 = NULL;
-	//GError *local = NULL;
+	const char *mode;
+	gboolean adhoc = FALSE;
+	GError *local = NULL;
 
 	g_return_val_if_fail (file != NULL, NULL);
 	g_return_val_if_fail (nd != NULL, NULL);
@@ -1810,9 +1883,12 @@ wireless_connection_from_netplan (const char *file,
 	nm_connection_add_setting (connection, wireless_setting);
 
 	ssid = nm_setting_wireless_get_ssid (NM_SETTING_WIRELESS (wireless_setting));
+	mode = nm_setting_wireless_get_mode (NM_SETTING_WIRELESS (wireless_setting));
+	if (mode && !strcmp (mode, "adhoc"))
+		adhoc = TRUE;
 
 	/* Wireless security */
-	security_setting = make_wireless_security_setting (netplan, file, ssid, adhoc, &s_8021x, &local);
+	security_setting = make_wireless_security_setting (nd, file, ssid, adhoc, &s_8021x, &local);
 	if (local) {
 		g_object_unref (connection);
 		g_propagate_error (error, local);
