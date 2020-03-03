@@ -16,6 +16,17 @@
 
 /*****************************************************************************/
 
+#define _NMLOG_DOMAIN  LOGD_SETTINGS
+#define _NMLOG(level, ...) \
+    G_STMT_START { \
+        nm_log ((level), (_NMLOG_DOMAIN), NULL, NULL, \
+                "%s" _NM_UTILS_MACRO_FIRST(__VA_ARGS__), \
+                "netplan: " \
+                _NM_UTILS_MACRO_REST(__VA_ARGS__)); \
+    } G_STMT_END
+
+/*****************************************************************************/
+
 struct _NMSNetplanStorageClass {
 	NMSettingsStorageClass parent;
 };
@@ -203,13 +214,13 @@ _storage_clear (NMSNetplanStorage *self)
 
 	/* Make sure that the related netplan .yaml config file gets removed. */
 	netplan_yaml_path = nms_netplan_storage_get_filename (self);
-	if (g_file_test (full_filename, G_FILE_TEST_EXISTS)) {
+	if (g_file_test (netplan_yaml, G_FILE_TEST_EXISTS)) {
 		netplan_yaml = g_file_new_for_path (netplan_yaml_path);
 		g_file_delete (netplan_yaml, NULL, &error);
 		if (error && *error)
-			_LOGT ("netplan: %s", (*error)->message);
+			_LOGW ("netplan: %s", (*error)->message);
 	}
-	
+
 	c_list_unlink (&self->parent._storage_lst);
 	c_list_unlink (&self->parent._storage_by_uuid_lst);
 	g_clear_object (&self->u.conn_data.connection);
