@@ -3021,6 +3021,9 @@ nms_netplan_writer_can_write_connection (NMConnection *connection, GError **erro
 	                  NM_SETTING_TEAM_SETTING_NAME,
 	                  NM_SETTING_BRIDGE_SETTING_NAME))
 		return TRUE;
+	if (nm_streq0 (type, NM_SETTING_WIRED_SETTING_NAME)
+	    && !nm_connection_get_setting_pppoe (connection))
+		return TRUE;
 
 	id = nm_connection_get_id (connection);
 	g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
