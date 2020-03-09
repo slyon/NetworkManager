@@ -1,44 +1,49 @@
 sources = files(
-  'nms-ifupdown-interface-parser.c',
-  'nms-ifupdown-parser.c',
+  'nms-netplan-utils.c',
+  'nms-netplan-storage.c',
+  'nms-netplan-writer.c',
+  'nms-netplan-reader.c',
 )
 
 deps = [
-  libudev_dep,
+  glib_dep,
   nm_dep,
 ]
 
-libnms_ifupdown_core = static_library(
-  'nms-ifupdown-core',
+libnms_netplan_core = static_library(
+  'nms-netplan-core',
   sources: sources,
   dependencies: deps,
 )
 
 sources = files(
-  'nms-ifupdown-plugin.c',
+  'nms-netplan-plugin.c',
 )
 
-libnm_settings_plugin_ifupdown = shared_module(
-  'nm-settings-plugin-ifupdown',
+libnm_settings_plugin_netplan = shared_module(
+  'nm-settings-plugin-netplan',
   sources: sources,
   dependencies: deps,
-  link_with: libnms_ifupdown_core,
-  link_args: ldflags_linker_script_settings,
+  link_with: libnms_netplan_core,
+  link_args: [
+    ldflags_linker_script_settings,
+    '-lnetplan',
+  ],
   link_depends: linker_script_settings,
   install: true,
   install_dir: nm_plugindir,
 )
 
-core_plugins += libnm_settings_plugin_ifupdown
+core_plugins += libnm_settings_plugin_netplan
 
 # FIXME: check_so_symbols replacement
 '''
 run_target(
-  'check-local-symbols-settings-ifupdown',
-  command: [check_so_symbols, libnm_settings_plugin_ifupdown.full_path()],
-  depends: libnm_settings_plugin_ifupdown,
+  'check-local-symbols-settings-netplan',
+  command: [check_so_symbols, libnm_settings_plugin_netplan.full_path()],
+  depends: libnm_settings_plugin_netplan,
 )
 
-check-local-symbols-settings-ifupdown: src/settings/plugins/ifupdown/libnm-settings-plugin-ifupdown.la
-  $(call check_so_symbols,$(builddir)/src/settings/plugins/ifupdown/.libs/libnm-settings-plugin-ifupdown.so)
+check-local-symbols-settings-netplan: src/settings/plugins/netplan/libnm-settings-plugin-netplan.la
+  $(call check_so_symbols,$(builddir)/src/settings/plugins/netplan/.libs/libnm-settings-plugin-netplan.so)
 '''
