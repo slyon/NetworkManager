@@ -1,4 +1,17 @@
 ===============================================
+NetworkManager-1.22.10
+Overview of changes since NetworkManager-1.22.8
+===============================================
+
+This is a new stable release of NetworkManager.  Notable changes include:
+
+* bond: allow setting bond options arp_validate and miimon that were rejected
+  previously.
+* core: periodically cleanup stale device state files from /run.
+* dhcp: fix crash in nettools client.
+* Various minor bug fixes and improvements
+
+===============================================
 NetworkManager-1.22.8
 Overview of changes since NetworkManager-1.22.6
 ===============================================
