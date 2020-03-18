@@ -3831,14 +3831,23 @@ delete_and_next2:
 	return TRUE;
 }
 
-static guint
-ip6_address_scope_priority (const struct in6_addr *addr)
+typedef enum {
+	IP6_ADDR_SCOPE_LOOPBACK,
+	IP6_ADDR_SCOPE_LINKLOCAL,
+	IP6_ADDR_SCOPE_SITELOCAL,
+	IP6_ADDR_SCOPE_OTHER,
+} IP6AddrScope;
+
+static IP6AddrScope
+ip6_address_scope (const NMPlatformIP6Address *a)
 {
-	if (IN6_IS_ADDR_LINKLOCAL (addr))
-		return 1;
-	if (IN6_IS_ADDR_SITELOCAL (addr))
-		return 2;
-	return 3;
+	if (IN6_IS_ADDR_LOOPBACK (&a->address))
+		return IP6_ADDR_SCOPE_LOOPBACK;
+	if (IN6_IS_ADDR_LINKLOCAL (&a->address))
+		return IP6_ADDR_SCOPE_LINKLOCAL;
+	if (IN6_IS_ADDR_SITELOCAL (&a->address))
+		return IP6_ADDR_SCOPE_SITELOCAL;
+	return IP6_ADDR_SCOPE_OTHER;
 }
 
 static int
@@ -3848,7 +3857,7 @@ ip6_address_scope_cmp (gconstpointer a, gconstpointer b, gpointer increasing)
 	const NMPlatformIP6Address *y = NMP_OBJECT_CAST_IP6_ADDRESS (*(const void **) b);
 	int ret;
 
-	ret = ip6_address_scope_priority (&x->address) - ip6_address_scope_priority (&y->address);
+	ret = ((int) ip6_address_scope (x)) - ((int) ip6_address_scope (y));
 
 	return GPOINTER_TO_INT (increasing) ? ret : -ret;
 }
@@ -3885,6 +3894,7 @@ nm_platform_ip6_address_sync (NMPlatform *self,
 	gs_unref_hashtable GHashTable *known_addresses_idx = NULL;
 	NMPLookup lookup;
 	guint32 ifa_flags;
+	IP6AddrScope scope;
 
 	/* The order we want to enforce is only among addresses with the same
 	 * scope, as the kernel keeps addresses sorted by scope. Therefore,
@@ -3959,43 +3969,47 @@ clear_and_next:
 		 * selection will choose addresses in the order as they are reported by kernel.
 		 * Note that the order in @plat_addresses of the remaining matches is highest
 		 * priority first.
-		 * We need to compare this to the order in @known_addresses (which has lowest
-		 * priority first).
+		 * We need to compare this to the order of addresses with same scope in
+		 * @known_addresses (which has lowest priority first).
 		 *
 		 * If we find a first discrepancy, we need to delete all remaining addresses
-		 * from that point on, because below we must re-add all the addresses in the
-		 * right order to get their priority right. */
-		i_plat = plat_addresses->len;
-		i_know = 0;
-		while (i_plat > 0) {
-			const NMPlatformIP6Address *plat_addr = NMP_OBJECT_CAST_IP6_ADDRESS (plat_addresses->pdata[--i_plat]);
+		 * with same scope from that point on, because below we must re-add all the
+		 * addresses in the right order to get their priority right. */
+		for (scope = IP6_ADDR_SCOPE_LOOPBACK; scope <= IP6_ADDR_SCOPE_OTHER; scope++) {
+			i_plat = plat_addresses->len;
+			i_know = 0;
+			while (i_plat > 0) {
+				const NMPlatformIP6Address *plat_addr = NMP_OBJECT_CAST_IP6_ADDRESS (plat_addresses->pdata[--i_plat]);
 
-			if (!plat_addr)
-				continue;
-
-			for (; i_know < known_addresses_len; i_know++) {
-				const NMPlatformIP6Address *know_addr = NMP_OBJECT_CAST_IP6_ADDRESS (known_addresses->pdata[i_know]);
-
-				if (!know_addr)
+				if (   !plat_addr
+				    || ip6_address_scope (plat_addr) != scope)
 					continue;
 
-				if (IN6_ARE_ADDR_EQUAL (&plat_addr->address, &know_addr->address)) {
-					/* we have a match. Mark address as handled. */
-					i_know++;
-					goto next_plat;
+				for (; i_know < known_addresses_len; i_know++) {
+					const NMPlatformIP6Address *know_addr = NMP_OBJECT_CAST_IP6_ADDRESS (known_addresses->pdata[i_know]);
+
+					if (   !know_addr
+					    || ip6_address_scope (know_addr) != scope)
+						continue;
+
+					if (IN6_ARE_ADDR_EQUAL (&plat_addr->address, &know_addr->address)) {
+						/* we have a match. Mark address as handled. */
+						i_know++;
+						goto next_plat;
+					}
+
+					/* all remaining addresses need to be removed as well, so that we can
+					 * re-add them in the correct order. Signal that, by setting @i_know
+					 * so that the next @i_plat iteration, we won't enter the loop and
+					 * delete the address right away */
+					i_know = known_addresses_len;
+					break;
 				}
 
-				/* all remainging addresses need to be removed as well, so that we can
-				 * re-add them in the correct order. Signal that, by setting @i_know
-				 * so that the next @i_plat iteration, we won't enter the loop and
-				 * delete the address right away */
-				i_know = known_addresses_len;
-				break;
-			}
-
-			nm_platform_ip6_address_delete (self, ifindex, plat_addr->address, plat_addr->plen);
+				nm_platform_ip6_address_delete (self, ifindex, plat_addr->address, plat_addr->plen);
 next_plat:
-			;
+				;
+			}
 		}
 	}
 
