@@ -264,7 +264,7 @@ test_if_ip6_manual (void)
 }
 
 static void
-test_multiple (void)
+test_multiple_merge (void)
 {
 	gs_unref_hashtable GHashTable *connections = NULL;
 	const char *const*ARGV = NM_MAKE_STRV ("ip=192.0.2.2:::::eth0",
@@ -304,6 +304,37 @@ test_multiple (void)
 	ip_addr = nm_setting_ip_config_get_address (s_ip6, 0);
 	g_assert (ip_addr);
 	g_assert_cmpstr (nm_ip_address_get_address (ip_addr), ==, "2001:db8::2");
+}
+
+static void
+test_multiple_bootdev (void)
+{
+	gs_unref_hashtable GHashTable *connections = NULL;
+	const char *const*ARGV = NM_MAKE_STRV ("nameserver=1.2.3.4",
+	                                       "ip=eth3:auto6",
+	                                       "ip=eth4:dhcp",
+	                                       "bootdev=eth4");
+	NMConnection *connection;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+
+	connections = nmi_cmdline_reader_parse (TEST_INITRD_DIR "/sysfs", ARGV);
+	g_assert (connections);
+	g_assert_cmpint (g_hash_table_size (connections), ==, 2);
+
+	connection = g_hash_table_lookup (connections, "eth3");
+	g_assert (connection);
+	s_ip6 = nm_connection_get_setting_ip6_config (connection);
+	g_assert (s_ip6);
+	g_assert_cmpstr (nm_setting_ip_config_get_method (s_ip6), ==, NM_SETTING_IP6_CONFIG_METHOD_AUTO);
+
+	connection = g_hash_table_lookup (connections, "eth4");
+	g_assert (connection);
+	s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	g_assert (s_ip4);
+	g_assert_cmpstr (nm_setting_ip_config_get_method (s_ip4), ==, NM_SETTING_IP4_CONFIG_METHOD_AUTO);
+	g_assert_cmpint (nm_setting_ip_config_get_num_dns (s_ip4), ==, 1);
+	g_assert_cmpstr (nm_setting_ip_config_get_dns (s_ip4, 0), ==, "1.2.3.4");
 }
 
 static void
@@ -358,16 +389,16 @@ test_some_more (void)
 	g_assert (connections);
 	g_assert_cmpint (g_hash_table_size (connections), ==, 2);
 
-	connection = g_hash_table_lookup (connections, "default_connection");
+	connection = g_hash_table_lookup (connections, "eth1");
 	g_assert (connection);
 	nmtst_assert_connection_verifies_without_normalization (connection);
 
 	s_con = nm_connection_get_setting_connection (connection);
 	g_assert (s_con);
 	g_assert_cmpstr (nm_setting_connection_get_connection_type (s_con), ==, NM_SETTING_WIRED_SETTING_NAME);
-	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "Wired Connection");
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "eth1");
 	g_assert_cmpstr (nm_setting_connection_get_interface_name (s_con), ==, "eth1");
-	g_assert_cmpint (nm_setting_connection_get_multi_connect (s_con), ==, NM_CONNECTION_MULTI_CONNECT_MULTIPLE);
+	g_assert_cmpint (nm_setting_connection_get_multi_connect (s_con), ==, NM_CONNECTION_MULTI_CONNECT_SINGLE);
 
 	s_wired = nm_connection_get_setting_wired (connection);
 	g_assert (s_wired);
@@ -1075,7 +1106,8 @@ int main (int argc, char **argv)
 	g_test_add_func ("/initrd/cmdline/if_auto_with_mtu_and_mac", test_if_auto_with_mtu_and_mac);
 	g_test_add_func ("/initrd/cmdline/if_ip4_manual", test_if_ip4_manual);
 	g_test_add_func ("/initrd/cmdline/if_ip6_manual", test_if_ip6_manual);
-	g_test_add_func ("/initrd/cmdline/multiple", test_multiple);
+	g_test_add_func ("/initrd/cmdline/multiple/merge", test_multiple_merge);
+	g_test_add_func ("/initrd/cmdline/multiple/bootdev", test_multiple_bootdev);
 	g_test_add_func ("/initrd/cmdline/some_more", test_some_more);
 	g_test_add_func ("/initrd/cmdline/bootdev", test_bootdev);
 	g_test_add_func ("/initrd/cmdline/bond", test_bond);
