@@ -3851,15 +3851,19 @@ ip6_address_scope (const NMPlatformIP6Address *a)
 }
 
 static int
-ip6_address_scope_cmp (gconstpointer a, gconstpointer b, gpointer increasing)
+ip6_address_scope_cmp (gconstpointer p_a, gconstpointer p_b, gpointer increasing)
 {
-	const NMPlatformIP6Address *x = NMP_OBJECT_CAST_IP6_ADDRESS (*(const void **) a);
-	const NMPlatformIP6Address *y = NMP_OBJECT_CAST_IP6_ADDRESS (*(const void **) b);
-	int ret;
+	const NMPlatformIP6Address *a;
+	const NMPlatformIP6Address *b;
 
-	ret = ((int) ip6_address_scope (x)) - ((int) ip6_address_scope (y));
+	if (!increasing)
+		NM_SWAP (p_a, p_b);
 
-	return GPOINTER_TO_INT (increasing) ? ret : -ret;
+	a = NMP_OBJECT_CAST_IP6_ADDRESS (*(const NMPObject *const*) p_a);
+	b = NMP_OBJECT_CAST_IP6_ADDRESS (*(const NMPObject *const*) p_b);
+
+	NM_CMP_DIRECT (ip6_address_scope (a), ip6_address_scope (b));
+	return 0;
 }
 
 /**
