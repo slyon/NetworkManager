@@ -1,0 +1,7 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    basic-test:
+      match:
+        macaddress: "de:ad:be:ef:ca:fe"

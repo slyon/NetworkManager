@@ -2912,7 +2912,35 @@ check-local-symbols-settings-netplan: src/settings/plugins/netplan/libnm-setting
 
 check_local += check-local-symbols-settings-netplan
 
+###############################################################################
+# src/settings/plugins/netplan/tests
+###############################################################################
+
+check_programs += src/settings/plugins/netplan/tests/test-netplan
+
+src_settings_plugins_netplan_tests_test_netplan_SOURCES = \
+	src/settings/plugins/netplan/tests/test-netplan.c
+
+src_settings_plugins_netplan_tests_test_netplan_CPPFLAGS = $(src_cppflags_base_test)
+
+src_settings_plugins_netplan_tests_test_netplan_LDFLAGS = \
+	$(GLIB_LIBS) \
+	$(CODE_COVERAGE_LDFLAGS) \
+	$(SANITIZER_EXEC_LDFLAGS)
+
+src_settings_plugins_netplan_tests_test_netplan_LDADD = \
+	src/settings/plugins/netplan/libnms-netplan-core.la \
+	src/libNetworkManagerTest.la \
+	-lnetplan
+
+$(src_settings_plugins_netplan_tests_test_netplan_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
+
 endif
+
+EXTRA_DIST += \
+	src/settings/plugins/netplan/tests/yaml/basic.yaml \
+	src/settings/plugins/netplan/meson.build \
+	src/settings/plugins/netplan/tests/meson.build
 
 ###############################################################################
 # src/settings/plugins/ifcfg-rh

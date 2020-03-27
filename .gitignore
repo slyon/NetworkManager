@@ -238,6 +238,7 @@ test-*.trs
 /src/platform/tests/test-route-linux
 /src/settings/plugins/ifcfg-rh/nmdbus-ifcfg-rh.[ch]
 /src/settings/plugins/ifcfg-rh/tests/test-ifcfg-rh
+/src/settings/plugins/netplan/tests/test-netplan
 /src/settings/plugins/ifupdown/tests/test-ifupdown
 /src/settings/plugins/keyfile/tests/test-keyfile-settings
 /src/settings/plugins/ifcfg-rh/tests/network-scripts/tmp/

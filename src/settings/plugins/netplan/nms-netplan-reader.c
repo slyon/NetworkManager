@@ -2857,15 +2857,10 @@ nmtst_connection_from_file (const char *filename,
                             char **out_unhandled,
                             GError **error)
 {
-#if 0
 	return connection_from_file_full (filename,
 	                                  network_file,
 	                                  test_type,
 	                                  out_unhandled,
 	                                  error,
 	                                  NULL);
-#endif
-	g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
-	             "Not implemented yet");
-	return NULL;
 }
