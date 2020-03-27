@@ -47,3 +47,7 @@ run_target(
 check-local-symbols-settings-netplan: src/settings/plugins/netplan/libnm-settings-plugin-netplan.la
   $(call check_so_symbols,$(builddir)/src/settings/plugins/netplan/.libs/libnm-settings-plugin-netplan.so)
 '''
+
+if enable_tests
+  subdir('tests')
+endif
