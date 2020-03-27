@@ -752,6 +752,8 @@ write_wireless_security_setting (NMConnection *connection,
 		psk = nm_setting_wireless_security_get_psk (s_wsec);
 
 	// XXX: Should be using set_secret() here?
+	// FIXME: Add quotes IFF type=WPA-PSK AND length=8-63, otherwise 64 HEX chars
+	//        see: https://github.com/CanonicalLtd/netplan/commit/2427ab267b24daa3504345be4ee6be7f286056a3
 	g_output_stream_printf(netplan, 0, NULL, NULL,
 			       "          password: %s\n", psk);
 
@@ -2765,6 +2767,13 @@ do_write_construct (NMConnection *connection,
 		                        nm_connection_get_interface_name (connection));
 		if (!write_vlan_setting (connection, netplan, error))
 			return FALSE;
+	} else if (!strcmp (type, NM_SETTING_GSM_SETTING_NAME)) {
+		// TODO: add NM_SETTING_GSM_SETTING_NAME
+		//       see: https://github.com/CanonicalLtd/netplan/commit/76aa65e67c6a406548cdc4b866e0e0f54ab2b363
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+			         "Can't write connection type '%s'",
+			         NM_SETTING_GSM_SETTING_NAME);
+		return FALSE;
 	} else if (!strcmp (type, NM_SETTING_WIRELESS_SETTING_NAME)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "  wifis:\n    %s:\n",
@@ -3014,6 +3023,7 @@ nms_netplan_writer_can_write_connection (NMConnection *connection, GError **erro
 
 	type = nm_connection_get_connection_type (connection);
 	_LOGW ("MATT: writing \"%s\"", type);
+	// TODO: add NM_SETTING_GSM_SETTING_NAME
 	if (NM_IN_STRSET (type,
 	                  NM_SETTING_VLAN_SETTING_NAME,
 	                  NM_SETTING_WIRELESS_SETTING_NAME,
