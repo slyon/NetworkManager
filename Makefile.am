@@ -2001,7 +2001,9 @@ check_programs += src/settings/plugins/netplan/tests/test-netplan
 src_settings_plugins_netplan_tests_test_netplan_SOURCES = \
 	src/settings/plugins/netplan/tests/test-netplan.c
 
-src_settings_plugins_netplan_tests_test_netplan_CPPFLAGS = $(src_cppflags_base_test)
+src_settings_plugins_netplan_tests_test_netplan_CPPFLAGS = \
+	$(src_cppflags_base_test) \
+	$(UUID_CFLAGS)
 
 src_settings_plugins_netplan_tests_test_netplan_LDFLAGS = \
 	$(GLIB_LIBS) \
