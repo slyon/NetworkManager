@@ -113,11 +113,9 @@ test_read_basic (void)
 	g_assert_cmpint (nm_setting_wired_get_mtu (s_wired), ==, 0);
 
 	/* MAC address */
-	/* FIXME: s_wired does not seem to have NM_SETTING_WIRED_MAC_ADDRESS set.
 	mac = nm_setting_wired_get_mac_address (s_wired);
 	g_assert_true (mac);
 	g_assert_true (nm_utils_hwaddr_matches (mac, -1, expected_mac_address, ETH_ALEN));
-	*/
 
 	/* ===== IPv4 SETTING ===== */
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
