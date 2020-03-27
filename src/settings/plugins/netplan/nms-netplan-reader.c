@@ -2603,9 +2603,10 @@ connection_from_file_full (const char *filename,
 
 	NM_SET_OUT (out_ignore_error, FALSE);
 
-	/* Non-NULL only for unit tests; normally use /etc/netplan */
+	/* Non-NULL only for unit tests; normally use /etc/netplan/*.yaml
 	if (!network_file)
 		network_file = SYSCONFDIR "/netplan";
+	*/
 
 	netplan_name = utils_get_netplan_name (filename);
 	if (!netplan_name) {
@@ -2614,8 +2615,9 @@ connection_from_file_full (const char *filename,
 		return NULL;
 	}
 
-	/* TODO: Support network_file; for unit testing */
 	ret = netplan_parse_yaml (filename, error);
+	if (ret && network_file)
+		ret = netplan_parse_yaml (network_file, error);
 	if (ret) {
 		_LOGT ("commit: parse successful");
 		netdefs = netplan_finish_parse (error);
@@ -2721,6 +2723,10 @@ connection_from_file_full (const char *filename,
 #endif
 	g_hash_table_iter_init (&iter, netdefs);
 	g_hash_table_iter_next (&iter, &key, (gpointer) &netdef);
+	if (!netdef) {
+		_LOGE ("invalid netdef");
+		return NULL;
+	}
 	_LOGT ("netplan netdef %s : %d", (char *) key, netdef->type);
 
 
