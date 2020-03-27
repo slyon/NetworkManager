@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-//#include <netplan/parse.h>
+#include <netplan/parse.h>
 
 #include "nm-utils.h"
 #include "nm-setting-connection.h"
@@ -54,6 +54,20 @@
 
 /*****************************************************************************/
 
+#define _NMLOG_DOMAIN      LOGD_SETTINGS
+#define _NMLOG_PREFIX_NAME "test-netplan"
+#define _NMLOG(level, ...) \
+    G_STMT_START { \
+        nm_log ((level), (_NMLOG_DOMAIN), NULL, NULL, \
+                "%s" _NM_UTILS_MACRO_FIRST(__VA_ARGS__), \
+                _NMLOG_PREFIX_NAME": " \
+                _NM_UTILS_MACRO_REST(__VA_ARGS__)); \
+    } G_STMT_END
+
+#define PARSE_WARNING(...) _LOGW ("%s" _NM_UTILS_MACRO_FIRST(__VA_ARGS__), "    " _NM_UTILS_MACRO_REST(__VA_ARGS__))
+
+/*****************************************************************************/
+
 static NMConnection *
 _connection_from_file (const char *filename,
                        const char *network_file,
@@ -78,44 +92,46 @@ _connection_from_file (const char *filename,
 	return connection;
 }
 
+static void
+_clear_all_netdefs (void)
+{
+	// Clear all netdefs before each test, so we only access the connection under test.
+	if(netdefs) {
+		guint n = g_hash_table_size (netdefs);
+		// TODO: make sure that any dynamically allocated netdef data is freed
+		g_hash_table_remove_all (netdefs);
+		_LOGT ("cleared %u prior netdefs", n);
+	}
+}
+
 /*****************************************************************************/
 
 static void
-test_read_basic (void)
+test_read_basic_dhcp (void)
 {
 	NMConnection *connection;
 	NMSettingConnection *s_con;
 	NMSettingWired *s_wired;
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
-	const char *mac;
-	char expected_mac_address[ETH_ALEN] = { 0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe };
 
-	connection = _connection_from_file (TEST_NETPLAN_DIR"/basic.yaml",
-	                                    NULL, "Ethernet", NULL);
+	_clear_all_netdefs ();
+	connection = _connection_from_file (TEST_NETPLAN_DIR"/basic-dhcp.yaml",
+	                                    TEST_NETPLAN_DIR"/wired-default.yaml",
+										NULL, NULL);
 
 	/* ===== CONNECTION SETTING ===== */
 	s_con = nm_connection_get_setting_connection (connection);
 	g_assert_true (s_con);
-	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "basic-test");
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "wired-default");
 	g_assert_cmpint (nm_setting_connection_get_timestamp (s_con), ==, 0);
 	g_assert_true (nm_setting_connection_get_autoconnect (s_con));
 	g_assert_cmpint (nm_setting_connection_get_autoconnect_retries (s_con), ==, -1);
-
-	/* UUID can't be tested if the netplan does not contain the UUID key, because
-	 * the UUID is generated on the full path of the netplan file, which can change
-	 * depending on where the tests are run.
-	 */
 
 	/* ===== WIRED SETTING ===== */
 	s_wired = nm_connection_get_setting_wired (connection);
 	g_assert_true (s_wired);
 	g_assert_cmpint (nm_setting_wired_get_mtu (s_wired), ==, 0);
-
-	/* MAC address */
-	mac = nm_setting_wired_get_mac_address (s_wired);
-	g_assert_true (mac);
-	g_assert_true (nm_utils_hwaddr_matches (mac, -1, expected_mac_address, ETH_ALEN));
 
 	/* ===== IPv4 SETTING ===== */
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
@@ -128,6 +144,42 @@ test_read_basic (void)
 	g_assert_true (s_ip6);
 	g_assert_cmpstr (nm_setting_ip_config_get_method (s_ip6), ==, NM_SETTING_IP6_CONFIG_METHOD_AUTO);
 	g_assert_true (nm_setting_ip_config_get_never_default (s_ip6) == FALSE);
+
+	g_object_unref (connection);
+}
+
+static void
+test_read_ethernet_match_mac (void)
+{
+	NMConnection *connection;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	const char *mac;
+	char expected_mac_address[ETH_ALEN] = { 0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe };
+
+	_clear_all_netdefs ();
+	connection = _connection_from_file (TEST_NETPLAN_DIR"/ethernet-match-mac.yaml",
+	                                    NULL, NULL, NULL);
+
+	/* ===== CONNECTION SETTING ===== */
+	s_con = nm_connection_get_setting_connection (connection);
+	g_assert_true (s_con);
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "eth0");
+	g_assert_cmpint (nm_setting_connection_get_timestamp (s_con), ==, 0);
+	g_assert_true (nm_setting_connection_get_autoconnect (s_con));
+	g_assert_cmpint (nm_setting_connection_get_autoconnect_retries (s_con), ==, -1);
+
+	/* ===== WIRED SETTING ===== */
+	s_wired = nm_connection_get_setting_wired (connection);
+	g_assert_true (s_wired);
+	g_assert_cmpint (nm_setting_wired_get_mtu (s_wired), ==, 0);
+
+	/* MAC address */
+	mac = nm_setting_wired_get_mac_address (s_wired);
+	g_assert_true (mac);
+	g_assert_true (nm_utils_hwaddr_matches (mac, -1, expected_mac_address, ETH_ALEN));
 
 	g_object_unref (connection);
 }
@@ -149,7 +201,8 @@ int main (int argc, char **argv)
 		g_error ("failure to create test directory \"%s\": %s", TEST_SCRATCH_DIR_TMP, nm_strerror_native (errsv));
 	}
 
-	g_test_add_func (TPATH "basic", test_read_basic);
+	g_test_add_func (TPATH "basic-dhcp", test_read_basic_dhcp);
+	g_test_add_func (TPATH "ethernet-match-mac", test_read_ethernet_match_mac);
 
 	return g_test_run ();
 }
