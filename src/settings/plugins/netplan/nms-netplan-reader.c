@@ -1964,6 +1964,10 @@ make_wired_setting (NetplanNetDefinition *nd,
 	if (nd->mtubytes > 0)
 		g_object_set (s_wired, NM_SETTING_WIRED_MTU, nd->mtubytes, NULL);
 
+	value = nd->match.mac;
+	if (value)
+		g_object_set (s_wired, NM_SETTING_WIRED_MAC_ADDRESS, value, NULL);
+
 	value = nd->set_mac;
 	if (value)
 		g_object_set (s_wired, NM_SETTING_WIRED_CLONED_MAC_ADDRESS, value, NULL);
