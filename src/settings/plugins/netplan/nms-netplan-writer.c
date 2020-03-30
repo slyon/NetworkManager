@@ -2547,6 +2547,7 @@ write_ip6_setting (NMConnection *connection,
 	//int priority;
 	NMIPAddress *addr;
 	const char *dns;
+	const char *gateway = NULL;
 	//gint64 route_metric;
 	//NMIPRouteTableSyncMode route_table;
 	GString *ip_str;
@@ -2556,6 +2557,11 @@ write_ip6_setting (NMConnection *connection,
 	if (!s_ip6) {
 		return TRUE;
 	}
+
+	gateway = nm_setting_ip_config_get_gateway (s_ip6);
+	if (gateway)
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+		                       "      gateway6: %s\n", gateway);
 
 	value = nm_setting_ip_config_get_method (s_ip6);
 	g_assert (value);
@@ -2585,6 +2591,8 @@ write_ip6_setting (NMConnection *connection,
 
 	/* Write out IP addresses */
 	num = nm_setting_ip_config_get_num_addresses (s_ip6);
+	if (num > 0)
+		g_output_stream_printf(netplan, 0, NULL, NULL, "      addresses:\n");
 	for (i = 0; i < num; i++) {
 		ip_str = g_string_new (NULL);
 
@@ -2593,6 +2601,9 @@ write_ip6_setting (NMConnection *connection,
 		g_string_printf (ip_str, "%s/%u",
 		                 nm_ip_address_get_address (addr),
 		                 nm_ip_address_get_prefix (addr));
+		g_output_stream_printf(netplan, 0, NULL, NULL, "        - %s/%u\n",
+							   nm_ip_address_get_address (addr),
+							   nm_ip_address_get_prefix (addr));
 
 		value = g_string_free(ip_str, FALSE);
 		g_array_append_val(addresses, value);
@@ -2600,17 +2611,25 @@ write_ip6_setting (NMConnection *connection,
 
 	/* Write out DNS - 'DNS' key is used both for IPv4 and IPv6 */
 	//s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	if (nm_setting_ip_config_get_num_dns (s_ip6) > 0 ||
+		nm_setting_ip_config_get_num_dns_searches (s_ip6) > 0)
+	g_output_stream_printf(netplan, 0, NULL, NULL, "      nameservers:\n");
 	num = nm_setting_ip_config_get_num_dns (s_ip6);
+	if (num > 0)
+		g_output_stream_printf(netplan, 0, NULL, NULL, "        addresses:\n");
 	for (i = 0; i < num; i++) {
 		dns = nm_setting_ip_config_get_dns (s_ip6, i);
+		g_output_stream_printf(netplan, 0, NULL, NULL, "          - %s\n", dns);
 		g_array_append_val(nameservers, dns);
 	}
 
 	/* Write out DNS domains */
 	num = nm_setting_ip_config_get_num_dns_searches (s_ip6);
 	if (num > 0) {
+		g_output_stream_printf(netplan, 0, NULL, NULL, "        search:\n");
 		for (i = 0; i < num; i++) {
 			value = nm_setting_ip_config_get_dns_search (s_ip6, i);
+			g_output_stream_printf(netplan, 0, NULL, NULL, "          - %s\n", value);
 			g_array_append_val (searches, value);
 		}
 	}

@@ -998,20 +998,21 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	gs_unref_object NMSettingIPConfig *s_ip6 = NULL;
 	gs_free char *value = NULL;
 	gs_free const char **list = NULL;
+	char *method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
+	NMIPAddress *addr6;
+	GError *local = NULL;
 #if 0
 	const char *v;
 	gboolean ipv6init;
 	gboolean ipv6forwarding;
 	gboolean disabled;
 	gboolean dhcp6 = FALSE;
-	char *method = NM_SETTING_IP6_CONFIG_METHOD_MANUAL;
 	const char *ipv6addr, *ipv6addr_secondaries;
 	gs_free char *ipv6addr_to_free = NULL;
 	gs_free char *ipv6addr_secondaries_to_free = NULL;
 	const char *const *iter;
 	guint32 i;
 	int i_val;
-	GError *local = NULL;
 	int priority;
 	gboolean never_default = FALSE;
 	gboolean ip6_privacy = FALSE, ip6_privacy_prefer_public_ip;
@@ -1130,10 +1131,15 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 		route_table = 0;
 	}
 #endif  /* ipv6 methods and settings */
+	if (nd->ip6_addresses)
+		method = NM_SETTING_IP6_CONFIG_METHOD_MANUAL;
+
+	if (nd->gateway6)
+		g_object_set (s_ip6, NM_SETTING_IP_CONFIG_GATEWAY, nd->gateway6, NULL);
 
 	// TODO: make a real s_ip6 object (map from the real values, not just DHCP)
 	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NM_SETTING_IP_CONFIG_METHOD, method,
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_DNS, FALSE,
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_ROUTES, FALSE,
 	              NM_SETTING_IP_CONFIG_NEVER_DEFAULT, FALSE,
@@ -1175,12 +1181,23 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	              svGetValueBoolean (netplan, "DHCPV6_SEND_HOSTNAME", TRUE), NULL);
 #endif  /* IPv6 DUID, hostname and special DHCP options */
 
+	/* Read static IP addresses. */
+	if (nd->ip6_addresses) {
+		for (unsigned i = 0; i < nd->ip6_addresses->len; ++i) {
+			gchar** ipmask = g_strsplit (g_array_index(nd->ip6_addresses, char*, i), "/", 2);
+			addr6 = nm_ip_address_new (AF_INET6, ipmask[0], atoi(ipmask[1]), &local);
+			g_assert_no_error (local);
+			nm_setting_ip_config_add_address (s_ip6, addr6);
+			nm_ip_address_unref (addr6);
+		}
+	}
+
+	if (nd->ip6_nameservers)
+		for (unsigned i = 0; i < nd->ip6_nameservers->len; ++i)
+			nm_setting_ip_config_add_dns (s_ip6,
+										  g_array_index(nd->ip6_nameservers, char*, i));
+
 #if 0  /* TODO: IPv6: read static addresses. */
-	/* Read static IP addresses.
-	 * Read them even for AUTO and DHCP methods - in this case the addresses are
-	 * added to the automatic ones. Note that this is not currently supported by
-	 * the legacy 'network' service (ifup-eth).
-	 */
 	ipv6addr = svGetValueStr (netplan, "IPV6ADDR", &ipv6addr_to_free);
 	ipv6addr_secondaries = svGetValueStr (netplan, "IPV6ADDR_SECONDARIES", &ipv6addr_secondaries_to_free);
 

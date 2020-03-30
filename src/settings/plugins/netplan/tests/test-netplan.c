@@ -500,8 +500,36 @@ test_write_wired_static (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
 
 	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_MANUAL,
+	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
+	              NM_SETTING_IP_CONFIG_GATEWAY, "2001:dead:beef::1",
+	              //NM_SETTING_IP_CONFIG_ROUTE_METRIC, (gint64) 204,
 	              NULL);
+
+	/* Add addresses */
+	addr6 = nm_ip_address_new (AF_INET6, "1003:1234:abcd::1", 11, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip6, addr6);
+	nm_ip_address_unref (addr6);
+
+	addr6 = nm_ip_address_new (AF_INET6, "2003:1234:abcd::2", 22, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip6, addr6);
+	nm_ip_address_unref (addr6);
+
+	addr6 = nm_ip_address_new (AF_INET6, "3003:1234:abcd::3", 33, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip6, addr6);
+	nm_ip_address_unref (addr6);
+
+	/* DNS servers */
+	nm_setting_ip_config_add_dns (s_ip6, "fade:0102:0103::face");
+	nm_setting_ip_config_add_dns (s_ip6, "cafe:ffff:eeee:dddd:cccc:bbbb:aaaa:feed");
+
+	/* DNS domains */
+	// FIXME: How to differentiate ip4/ip6 search domains??
+	//nm_setting_ip_config_add_dns_search (s_ip6, "foobar6.com");
+	//nm_setting_ip_config_add_dns_search (s_ip6, "lab6.foobar.com");
 
 	nmtst_assert_connection_verifies (connection);
 
