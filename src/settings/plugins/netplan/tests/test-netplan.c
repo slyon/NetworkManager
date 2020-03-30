@@ -366,16 +366,12 @@ static void
 test_write_wired_basic (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
-	nmtst_auto_unlinkfile char *route6file = NULL;
 	gs_unref_object NMConnection *connection = NULL;
 	gs_unref_object NMConnection *reread = NULL;
 	NMSettingConnection *s_con;
 	NMSettingWired *s_wired;
-	NMSettingIPConfig *s_ip4, *reread_s_ip4;
-	NMSettingIPConfig *s_ip6, *reread_s_ip6;
-	NMIPAddress *addr;
-	NMIPAddress *addr6;
-	NMIPRoute *route6;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
 	GError *error = NULL;
 
 	_clear_all_netdefs ();
@@ -431,6 +427,95 @@ test_write_wired_basic (void)
 	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
 }
 
+static void
+test_write_wired_static (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	nmtst_auto_unlinkfile char *route6file = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	guint32 mtu = 1492;
+	NMSettingIPConfig *s_ip4, *reread_s_ip4;
+	NMSettingIPConfig *s_ip6, *reread_s_ip6;
+	NMIPAddress *addr;
+	NMIPAddress *addr6;
+	NMIPRoute *route6;
+	GError *error = NULL;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "write-test-static",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+				  NM_SETTING_CONNECTION_STABLE_ID, "stable-id-test-static",
+				  NM_SETTING_CONNECTION_INTERFACE_NAME, "eth42",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRED_SETTING_NAME,
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	g_object_set (s_wired,
+	              NM_SETTING_WIRED_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
+	              NM_SETTING_WIRED_MTU, mtu,
+	              NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
+	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
+	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
+	              //NM_SETTING_IP_CONFIG_ROUTE_METRIC, (gint64) 204,
+	              NULL);
+
+	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip4, addr);
+	nm_ip_address_unref (addr);
+
+	addr = nm_ip_address_new (AF_INET, "1.1.1.5", 24, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip4, addr);
+	nm_ip_address_unref (addr);
+
+	nm_setting_ip_config_add_dns (s_ip4, "4.2.2.1");
+	nm_setting_ip_config_add_dns (s_ip4, "4.2.2.2");
+
+	nm_setting_ip_config_add_dns_search (s_ip4, "foobar.com");
+	nm_setting_ip_config_add_dns_search (s_ip4, "lab.foobar.com");
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection,
+	                        TEST_SCRATCH_DIR,
+	                        &testfile);
+
+	_clear_all_netdefs ();
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
 /*****************************************************************************/
 
 #define TPATH "/settings/plugins/neptlan/"
@@ -452,6 +537,7 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "ethernet-match-mac", test_read_ethernet_match_mac);
 
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
+	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);
 
 	return g_test_run ();
 }

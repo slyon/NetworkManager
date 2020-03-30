@@ -705,13 +705,15 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	gs_free char *route_path = NULL;
 	gs_free char *value = NULL;
 	gs_free char *dns_options_free = NULL;
+	NMIPAddress *addr;
 	gs_free char *gateway = NULL;
+	GError *local = NULL;
+	char *method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
 
 	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
 
 #if 0  /* TODO: Review defroute magic for never-default */
 	const char *v;
-	char *method;
 	const char *dns_options = NULL;
 	int i;
 	guint32 a;
@@ -790,9 +792,15 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	}
 #endif
 
+	if (nd->ip4_addresses)
+		method = NM_SETTING_IP4_CONFIG_METHOD_MANUAL;
+
+	if (nd->gateway4)
+		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_GATEWAY, nd->gateway4, NULL);
+
 	/* TODO: map real values for ipv4 -- method + options */
 	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+	              NM_SETTING_IP_CONFIG_METHOD, method,
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_DNS, FALSE,
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_ROUTES, FALSE,
 	              NM_SETTING_IP_CONFIG_NEVER_DEFAULT, FALSE,
@@ -829,56 +837,38 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	v = svGetValueStr (netplan, "DHCP_CLIENT_ID", &value);
 	if (v)
 		g_object_set (s_ip4, NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID, v, NULL);
+#endif
 
 	/* Read static IP addresses.
 	 * Read them even for AUTO method - in this case the addresses are
 	 * added to the automatic ones. Note that this is not currently supported by
 	 * the legacy 'network' service (ifup-eth).
 	 */
-	for (i = -1;; i++) {
-		NMIPAddress *addr = NULL;
-
-		/* gateway will only be set if still unset. Hence, we don't leak gateway
-		 * here by calling read_full_ip4_address() repeatedly */
-		if (!read_full_ip4_address (netplan, i, NULL, &addr, &gateway, error))
-			return NULL;
-
-		if (!addr) {
-			/* The first mandatory variable is 2-indexed (IPADDR2)
-			 * Variables IPADDR, IPADDR0 and IPADDR1 are optional */
-			if (i > 1)
-				break;
-			continue;
-		}
-
-		if (!nm_setting_ip_config_add_address (s_ip4, addr))
-			PARSE_WARNING ("duplicate IP4 address");
-		nm_ip_address_unref (addr);
-	}
-
-	/* Gateway */
-	if (!gateway) {
-		if (network_netplan) {
-			gboolean read_success;
-
-			read_success = read_ip4_address (network_netplan, "GATEWAY", &has_key, &a, error);
-			if (!read_success)
-				return NULL;
-			if (has_key) {
-				if (nm_setting_ip_config_get_num_addresses (s_ip4) == 0) {
-					gs_free char *f = g_path_get_basename (svFileGetName (netplan));
-					PARSE_WARNING ("ignoring GATEWAY (/etc/sysconfig/network) for %s "
-					               "because the connection has no static addresses", f);
-				} else
-					gateway = nm_utils_inet4_ntop_dup (a);
-			}
+	if (nd->ip4_addresses) {
+		for (unsigned i = 0; i < nd->ip4_addresses->len; ++i) {
+			gchar** ipmask = g_strsplit (g_array_index(nd->ip4_addresses, char*, i), "/", 2);
+			addr = nm_ip_address_new (AF_INET, ipmask[0], atoi(ipmask[1]), &local);
+			g_assert_no_error (local);
+			nm_setting_ip_config_add_address (s_ip4, addr);
+			nm_ip_address_unref (addr);
 		}
 	}
-	g_object_set (s_ip4, NM_SETTING_IP_CONFIG_GATEWAY, gateway, NULL);
+
+#if 0
 
 	if (gateway && never_default)
 		PARSE_WARNING ("GATEWAY will be ignored when DEFROUTE is disabled");
 #endif
+
+	if (nd->ip4_nameservers)
+		for (unsigned i = 0; i < nd->ip4_nameservers->len; ++i)
+			nm_setting_ip_config_add_dns (s_ip4,
+										  g_array_index(nd->ip4_nameservers, char*, i));
+
+	if (nd->search_domains)
+		for (unsigned i = 0; i < nd->search_domains->len; ++i)
+			nm_setting_ip_config_add_dns_search (s_ip4,
+												 g_array_index(nd->search_domains, char*, i));
 
 #if 0  /* TODO: Implement read for connection sharing. */
 	/* We used to skip saving a lot of unused properties for the ipv4 shared method.

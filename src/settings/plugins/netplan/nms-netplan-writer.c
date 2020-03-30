@@ -2320,9 +2320,11 @@ write_ip4_setting (NMConnection *connection,
 	if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_AUTO))
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "      dhcp4: yes\n");
-#if 0  /* TODO: implement setting statically assigned IPs: append to GArray for addresses */
 	else if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_MANUAL)) {
+		// Do nothing:
 		// Static addresses addressed below.
+	}
+#if 0  /* TODO: implement setting statically assigned IPs: append to GArray for addresses */
 	} else if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_LINK_LOCAL))
 		link_local &= 0x2;
 	else if (!strcmp (method, NM_SETTING_IP4_CONFIG_METHOD_SHARED))
@@ -2333,6 +2335,9 @@ write_ip4_setting (NMConnection *connection,
 	 * without labels. Unset obsolete NETMASK<n>.
 	 */
 
+	if (num > 0)
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+							   "      addresses:\n");
 	for (i = n = 0; i < num; i++) {
 		NMIPAddress *addr;
 		GString *address;
@@ -2351,6 +2356,9 @@ write_ip4_setting (NMConnection *connection,
 		g_string_printf(address, "%s/%d",
 		                nm_ip_address_get_address (addr),
 		                nm_ip_address_get_prefix (addr));
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+							   "        - %s/%d\n", nm_ip_address_get_address (addr),
+							   nm_ip_address_get_prefix (addr));
 		value = g_string_free(address, FALSE);
 		g_array_append_val (addresses, value);
 	}
@@ -2372,20 +2380,32 @@ write_ip4_setting (NMConnection *connection,
 		g_output_stream_printf(netplan, 0, NULL, NULL,
 		                       "      gateway4: %s\n", gateway);
 
+
+	if (nm_setting_ip_config_get_num_dns (s_ip4) > 0 ||
+		nm_setting_ip_config_get_num_dns_searches (s_ip4) > 0)
+		g_output_stream_printf(netplan, 0, NULL, NULL, "      nameservers:\n");
+
 	num = nm_setting_ip_config_get_num_dns (s_ip4);
+	if (num > 0)
+		g_output_stream_printf(netplan, 0, NULL, NULL, "        addresses:\n");
 	for (i = 0; i < num; i++) {
 		const char *dns;
 
 		dns = nm_setting_ip_config_get_dns (s_ip4, i);
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+							   "          - %s\n", dns);
 		g_array_append_val(nameservers, dns);
 	}
 
 	num = nm_setting_ip_config_get_num_dns_searches (s_ip4);
 	if (num > 0) {
+		g_output_stream_printf(netplan, 0, NULL, NULL, "        search:\n");
 		for (i = 0; i < num; i++) {
 			const char *search;
 
 			search = nm_setting_ip_config_get_dns_search (s_ip4, i);
+			g_output_stream_printf(netplan, 0, NULL, NULL,
+								   "          - %s\n", search);
 			g_array_append_val (searches, search);
 		}
 	}
