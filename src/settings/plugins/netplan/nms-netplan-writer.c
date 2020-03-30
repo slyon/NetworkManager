@@ -2952,7 +2952,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	_LOGT ("write: write connection %s (%s) to file \"%s\"",
 	       nm_connection_get_id (connection),
 	       nm_connection_get_uuid (connection),
-	       filename);
+	       *out_filename);
 
 	if (!do_write_to_disk (connection,
 	                       netplan,
@@ -2963,7 +2963,6 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	                       error))
 		return FALSE;
 
-#if 0
 	/* Note that we just wrote the connection to disk, and re-read it from there.
 	 * That is racy if somebody else modifies the connection.
 	 * That race is why we must not tread a failure to re-read the profile
@@ -2979,7 +2978,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 		gs_free_error GError *local = NULL;
 		gs_free char *unhandled = NULL;
 
-		reread = connection_from_file (filename,
+		reread = connection_from_file (*out_filename,
 		                               &unhandled,
 		                               &local,
 		                               NULL);
@@ -2987,11 +2986,11 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 
 		if (!reread) {
 			_LOGW ("write: failure to re-read connection \"%s\": %s",
-			       filename, local->message);
+			       *out_filename, local->message);
 		} else if (unhandled) {
 			g_clear_object (&reread);
 			_LOGW ("write: failure to re-read connection \"%s\": %s",
-			       filename, "connection is unhandled");
+			       *out_filename, "connection is unhandled");
 		} else {
 			if (out_reread_same) {
 				reread_same = nm_connection_compare (reread, connection, NM_SETTING_COMPARE_FLAG_EXACT);
@@ -2999,7 +2998,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 					_LOGD ("write: connection %s (%s) was modified by persisting it to \"%s\" ",
 					       nm_connection_get_id (connection),
 					       nm_connection_get_uuid (connection),
-					       filename);
+					       *out_filename);
 				}
 			}
 		}
@@ -3008,6 +3007,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 		NM_SET_OUT (out_reread_same, reread_same);
 	}
 
+#if 0
 	/* Only return the filename if this was a newly written netplan */
 	if (out_filename && !filename)
 		*out_filename = g_strdup (filename);
@@ -3022,7 +3022,7 @@ nms_netplan_writer_can_write_connection (NMConnection *connection, GError **erro
 	const char *type, *id;
 
 	type = nm_connection_get_connection_type (connection);
-	_LOGW ("MATT: writing \"%s\"", type);
+	_LOGD ("MATT: writing \"%s\"", type);
 	// TODO: add NM_SETTING_GSM_SETTING_NAME
 	if (NM_IN_STRSET (type,
 	                  NM_SETTING_VLAN_SETTING_NAME,

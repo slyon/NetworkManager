@@ -104,6 +104,184 @@ _clear_all_netdefs (void)
 	}
 }
 
+/* dummy path for an "expected" file, meaning: don't check for expected
+ * written ifcfg file. */
+static const char NO_EXPECTED[1];
+
+static void
+_assert_expected_content (NMConnection *connection, const char *filename, const char *expected)
+{
+	gs_free char *content_expectd = NULL;
+	gs_free char *content_written = NULL;
+	GError *error = NULL;
+	gsize len_expectd = 0;
+	gsize len_written = 0;
+	gboolean success;
+	const char *uuid = NULL;
+
+	g_assert (NM_IS_CONNECTION (connection));
+	g_assert (filename);
+	g_assert (g_file_test (filename, G_FILE_TEST_EXISTS));
+
+	g_assert (expected);
+	if (expected == NO_EXPECTED)
+		return;
+
+	success = g_file_get_contents (filename, &content_written, &len_written, &error);
+	nmtst_assert_success (success, error);
+
+	success = g_file_get_contents (expected, &content_expectd, &len_expectd, &error);
+	nmtst_assert_success (success, error);
+
+	{
+		gsize i, j;
+
+		for (i = 0; i < len_expectd; ) {
+			if (content_expectd[i] != '$') {
+				i++;
+				continue;
+			}
+			if (g_str_has_prefix (&content_expectd[i], "${UUID}")) {
+				GString *str;
+
+				if (!uuid) {
+					uuid = nm_connection_get_uuid (connection);
+					g_assert (uuid);
+				}
+
+				j = strlen (uuid);
+
+				str = g_string_new_len (content_expectd, len_expectd);
+				g_string_erase (str, i, NM_STRLEN ("${UUID}"));
+				g_string_insert_len (str, i, uuid, j);
+
+				g_free (content_expectd);
+				len_expectd = str->len;
+				content_expectd = g_string_free (str, FALSE);
+				i += j;
+				continue;
+			}
+
+			/* other '$' is not supported. If need be, support escaping of
+			 * '$' via '$$'. */
+			g_assert_not_reached ();
+		}
+	}
+
+	if (   len_expectd != len_written
+	    || memcmp (content_expectd, content_written, len_expectd) != 0) {
+		if (   g_getenv ("NMTST_NETPLAN_UPDATE_EXPECTED")
+		    || nm_streq0 (g_getenv ("NM_TEST_REGENERATE"), "1")) {
+			if (uuid) {
+				gs_free char *search = g_strdup_printf ("UUID=%s\n", uuid);
+				const char *s;
+				gsize i;
+				GString *str;
+
+				s = content_written;
+				while (TRUE) {
+					s = strstr (s, search);
+					g_assert (s);
+					if (   s == content_written
+					    || s[-1] == '\n')
+						break;
+					s += strlen (search);
+				}
+
+				i = s - content_written;
+
+				str = g_string_new_len (content_written, len_written);
+				g_string_erase (str, i, strlen (search));
+				g_string_insert (str, i, "UUID=${UUID}\n");
+
+				len_written = str->len;
+				content_written = g_string_free (str, FALSE);
+			}
+			success = g_file_set_contents (expected, content_written, len_written, &error);
+			nmtst_assert_success (success, error);
+		} else {
+			g_error ("The content of \"%s\" (%zu) differs from \"%s\" (%zu). Set NMTST_NETPLAN_UPDATE_EXPECTED=yes to update the files inplace\n\n>>>%s<<<\n\n>>>%s<<<\n",
+			         filename, len_written,
+			         expected, len_expectd,
+			         content_written,
+			         content_expectd);
+		}
+	}
+}
+
+static void
+_assert_reread_same (NMConnection *connection, NMConnection *reread)
+{
+	nmtst_assert_connection_verifies_without_normalization (reread);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
+_writer_new_connection_reread (NMConnection *connection,
+                               const char *netplan_dir,
+                               char **out_filename,
+                               const char *expected,
+                               NMConnection **out_reread,
+                               gboolean *out_reread_same)
+{
+	gboolean success;
+	GError *error = NULL;
+	char *filename = NULL;
+	gs_unref_object NMConnection *con_verified = NULL;
+	gs_unref_object NMConnection *reread_copy = NULL;
+	NMConnection **reread = out_reread ?: ((nmtst_get_rand_uint32 () % 2) ? &reread_copy : NULL);
+
+	g_assert (NM_IS_CONNECTION (connection));
+	g_assert (netplan_dir);
+
+	con_verified = nmtst_connection_duplicate_and_normalize (connection);
+
+	success = nms_netplan_writer_write_connection (con_verified,
+	                                               netplan_dir,
+	                                               NULL,
+	                                               NULL,
+	                                               NULL,
+	                                               &filename,
+	                                               reread,
+	                                               out_reread_same,
+	                                               &error);
+	nmtst_assert_success (success, error);
+	g_assert (filename && filename[0]);
+
+	if (reread)
+		nmtst_assert_connection_verifies_without_normalization (*reread);
+
+	_assert_expected_content (con_verified, filename, expected);
+
+	if (out_filename)
+		*out_filename = filename;
+	else
+		g_free (filename);
+
+}
+
+static void
+_writer_new_connec_exp (NMConnection *connection,
+                        const char *netplan_dir,
+                        const char *expected,
+                        char **out_filename)
+{
+	gs_unref_object NMConnection *reread = NULL;
+	gboolean reread_same = FALSE;
+
+	_writer_new_connection_reread (connection, netplan_dir, out_filename, expected, &reread, &reread_same);
+	_assert_reread_same (connection, reread);
+	g_assert (reread_same);
+}
+
+static void
+_writer_new_connection (NMConnection *connection,
+                        const char *netplan_dir,
+                        char **out_filename)
+{
+	_writer_new_connec_exp (connection, netplan_dir, NO_EXPECTED, out_filename);
+}
+
 /*****************************************************************************/
 
 static void
@@ -184,6 +362,75 @@ test_read_ethernet_match_mac (void)
 	g_object_unref (connection);
 }
 
+static void
+test_write_wired_basic (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	nmtst_auto_unlinkfile char *route6file = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSettingIPConfig *s_ip4, *reread_s_ip4;
+	NMSettingIPConfig *s_ip6, *reread_s_ip6;
+	NMIPAddress *addr;
+	NMIPAddress *addr6;
+	NMIPRoute *route6;
+	GError *error = NULL;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "write-test",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+				  NM_SETTING_CONNECTION_STABLE_ID, "stable-id-test",
+				  NM_SETTING_CONNECTION_INTERFACE_NAME, "eth42",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRED_SETTING_NAME,
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	g_object_set (s_wired,
+	              NM_SETTING_WIRED_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
+	              NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+	              NULL);
+
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection,
+	                        TEST_SCRATCH_DIR,
+	                        &testfile);
+
+	_clear_all_netdefs ();
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
 /*****************************************************************************/
 
 #define TPATH "/settings/plugins/neptlan/"
@@ -203,6 +450,8 @@ int main (int argc, char **argv)
 
 	g_test_add_func (TPATH "basic-dhcp", test_read_basic_dhcp);
 	g_test_add_func (TPATH "ethernet-match-mac", test_read_ethernet_match_mac);
+
+	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 
 	return g_test_run ();
 }
