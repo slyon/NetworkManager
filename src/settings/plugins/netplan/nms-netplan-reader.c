@@ -206,6 +206,11 @@ make_connection_name (NetplanNetDefinition *nd,
 {
 	char *full_name = NULL, *name;
 
+	/* If the NetworkManager backend already has a NAME, use that */
+	name = nd->backend_settings.nm.name;
+	if (name)
+		return name;
+
 	/* If the netplan file already has a NAME, always use that */
 	name = nd->id;
 	if (name)
