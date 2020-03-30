@@ -796,8 +796,8 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_DNS, FALSE,
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_ROUTES, FALSE,
 	              NM_SETTING_IP_CONFIG_NEVER_DEFAULT, FALSE,
-	              NM_SETTING_IP_CONFIG_MAY_FAIL, FALSE,
-	              NM_SETTING_IP_CONFIG_ROUTE_METRIC, 100,
+	              //NM_SETTING_IP_CONFIG_MAY_FAIL, FALSE,
+	              //NM_SETTING_IP_CONFIG_ROUTE_METRIC, 100,
 	              NM_SETTING_IP_CONFIG_ROUTE_TABLE, 0,
 	              NULL);
 
@@ -1147,8 +1147,8 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_DNS, FALSE,
 	              NM_SETTING_IP_CONFIG_IGNORE_AUTO_ROUTES, FALSE,
 	              NM_SETTING_IP_CONFIG_NEVER_DEFAULT, FALSE,
-	              NM_SETTING_IP_CONFIG_MAY_FAIL, FALSE,
-	              NM_SETTING_IP_CONFIG_ROUTE_METRIC, 100,
+	              //NM_SETTING_IP_CONFIG_MAY_FAIL, FALSE,
+	              //NM_SETTING_IP_CONFIG_ROUTE_METRIC, 100,
 	              NM_SETTING_IP_CONFIG_ROUTE_TABLE, 0,
 	              NM_SETTING_IP6_CONFIG_IP6_PRIVACY, NM_SETTING_IP6_CONFIG_PRIVACY_UNKNOWN,
 	              NULL);
