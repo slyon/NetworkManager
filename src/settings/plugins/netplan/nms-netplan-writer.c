@@ -2374,34 +2374,18 @@ write_ip4_setting (NMConnection *connection,
 		g_output_stream_printf(netplan, 0, NULL, NULL,
 		                       "      gateway4: %s\n", gateway);
 
-
-	if (nm_setting_ip_config_get_num_dns (s_ip4) > 0 ||
-		nm_setting_ip_config_get_num_dns_searches (s_ip4) > 0)
-		g_output_stream_printf(netplan, 0, NULL, NULL, "      nameservers:\n");
-
 	num = nm_setting_ip_config_get_num_dns (s_ip4);
-	if (num > 0)
-		g_output_stream_printf(netplan, 0, NULL, NULL, "        addresses:\n");
 	for (i = 0; i < num; i++) {
 		const char *dns;
-
 		dns = nm_setting_ip_config_get_dns (s_ip4, i);
-		g_output_stream_printf(netplan, 0, NULL, NULL,
-							   "          - %s\n", dns);
 		g_array_append_val(nameservers, dns);
 	}
 
 	num = nm_setting_ip_config_get_num_dns_searches (s_ip4);
-	if (num > 0) {
-		g_output_stream_printf(netplan, 0, NULL, NULL, "        search:\n");
-		for (i = 0; i < num; i++) {
-			const char *search;
-
-			search = nm_setting_ip_config_get_dns_search (s_ip4, i);
-			g_output_stream_printf(netplan, 0, NULL, NULL,
-								   "          - %s\n", search);
-			g_array_append_val (searches, search);
-		}
+	for (i = 0; i < num; i++) {
+		const char *search;
+		search = nm_setting_ip_config_get_dns_search (s_ip4, i);
+		g_array_append_val (searches, search);
 	}
 
 #if 0  // TODO: default-route toggles and peer, dhcp settings.
@@ -2597,27 +2581,17 @@ write_ip6_setting (NMConnection *connection,
 
 	/* Write out DNS - 'DNS' key is used both for IPv4 and IPv6 */
 	//s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	if (nm_setting_ip_config_get_num_dns (s_ip6) > 0 ||
-		nm_setting_ip_config_get_num_dns_searches (s_ip6) > 0)
-	g_output_stream_printf(netplan, 0, NULL, NULL, "      nameservers:\n");
 	num = nm_setting_ip_config_get_num_dns (s_ip6);
-	if (num > 0)
-		g_output_stream_printf(netplan, 0, NULL, NULL, "        addresses:\n");
 	for (i = 0; i < num; i++) {
 		dns = nm_setting_ip_config_get_dns (s_ip6, i);
-		g_output_stream_printf(netplan, 0, NULL, NULL, "          - %s\n", dns);
 		g_array_append_val(nameservers, dns);
 	}
 
 	/* Write out DNS domains */
 	num = nm_setting_ip_config_get_num_dns_searches (s_ip6);
-	if (num > 0) {
-		g_output_stream_printf(netplan, 0, NULL, NULL, "        search:\n");
-		for (i = 0; i < num; i++) {
-			value = nm_setting_ip_config_get_dns_search (s_ip6, i);
-			g_output_stream_printf(netplan, 0, NULL, NULL, "          - %s\n", value);
-			g_array_append_val (searches, value);
-		}
+	for (i = 0; i < num; i++) {
+		value = nm_setting_ip_config_get_dns_search (s_ip6, i);
+		g_array_append_val (searches, value);
 	}
 
 	/* handle IPV6_DEFROUTE */
@@ -2894,6 +2868,32 @@ do_write_construct (NMConnection *connection,
 			g_output_stream_printf(netplan, 0, NULL, NULL, "%s",
 			                       g_array_index(addresses, char*, i));
 			if (i < addresses->len-1)
+				g_output_stream_printf(netplan, 0, NULL, NULL, ", ");
+		}
+		g_output_stream_printf(netplan, 0, NULL, NULL, "]\n");
+	}
+
+	/**
+	 * Write IP4 & IP6 DNS nameserver addresses and search
+	 */
+	if (nameservers->len > 0 || searches->len > 0)
+		g_output_stream_printf(netplan, 0, NULL, NULL, "      nameservers:\n");
+	if (nameservers->len > 0) {
+		g_output_stream_printf(netplan, 0, NULL, NULL, "        addresses: [");
+		for (unsigned i = 0; i < nameservers->len; ++i) {
+			g_output_stream_printf(netplan, 0, NULL, NULL, "%s",
+			                       g_array_index(nameservers, char*, i));
+			if (i < nameservers->len-1)
+				g_output_stream_printf(netplan, 0, NULL, NULL, ", ");
+		}
+		g_output_stream_printf(netplan, 0, NULL, NULL, "]\n");
+	}
+	if (searches->len > 0) {
+		g_output_stream_printf(netplan, 0, NULL, NULL, "        search: [");
+		for (unsigned i = 0; i < searches->len; ++i) {
+			g_output_stream_printf(netplan, 0, NULL, NULL, "%s",
+			                       g_array_index(searches, char*, i));
+			if (i < searches->len-1)
 				g_output_stream_printf(netplan, 0, NULL, NULL, ", ");
 		}
 		g_output_stream_printf(netplan, 0, NULL, NULL, "]\n");
