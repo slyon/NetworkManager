@@ -2335,9 +2335,6 @@ write_ip4_setting (NMConnection *connection,
 	 * without labels. Unset obsolete NETMASK<n>.
 	 */
 
-	if (num > 0)
-		g_output_stream_printf(netplan, 0, NULL, NULL,
-							   "      addresses:\n");
 	for (i = n = 0; i < num; i++) {
 		NMIPAddress *addr;
 		GString *address;
@@ -2356,9 +2353,6 @@ write_ip4_setting (NMConnection *connection,
 		g_string_printf(address, "%s/%d",
 		                nm_ip_address_get_address (addr),
 		                nm_ip_address_get_prefix (addr));
-		g_output_stream_printf(netplan, 0, NULL, NULL,
-							   "        - %s/%d\n", nm_ip_address_get_address (addr),
-							   nm_ip_address_get_prefix (addr));
 		value = g_string_free(address, FALSE);
 		g_array_append_val (addresses, value);
 	}
@@ -2591,20 +2585,12 @@ write_ip6_setting (NMConnection *connection,
 
 	/* Write out IP addresses */
 	num = nm_setting_ip_config_get_num_addresses (s_ip6);
-	if (num > 0)
-		g_output_stream_printf(netplan, 0, NULL, NULL, "      addresses:\n");
 	for (i = 0; i < num; i++) {
 		ip_str = g_string_new (NULL);
-
 		addr = nm_setting_ip_config_get_address (s_ip6, i);
-
 		g_string_printf (ip_str, "%s/%u",
 		                 nm_ip_address_get_address (addr),
 		                 nm_ip_address_get_prefix (addr));
-		g_output_stream_printf(netplan, 0, NULL, NULL, "        - %s/%u\n",
-							   nm_ip_address_get_address (addr),
-							   nm_ip_address_get_prefix (addr));
-
 		value = g_string_free(ip_str, FALSE);
 		g_array_append_val(addresses, value);
 	}
@@ -2884,20 +2870,34 @@ do_write_construct (NMConnection *connection,
 
 	if (!write_ip4_setting (connection,
 	                        netplan,
-				addresses,
-				nameservers,
-				searches,
+	                        addresses,
+	                        nameservers,
+	                        searches,
 	                        error))
 		return FALSE;
 
 	if (!write_ip6_setting (connection,
 	                        netplan,
-				addresses,
-				nameservers,
-				searches,
-				dhcp_overrides,
+	                        addresses,
+	                        nameservers,
+	                        searches,
+	                        dhcp_overrides,
 	                        error))
 		return FALSE;
+
+	/**
+	 * Write IP4 & IP6 addresses in CIDR format
+	 */
+	if (addresses->len > 0) {
+		g_output_stream_printf(netplan, 0, NULL, NULL, "      addresses: [");
+		for (unsigned i = 0; i < addresses->len; ++i) {
+			g_output_stream_printf(netplan, 0, NULL, NULL, "%s",
+			                       g_array_index(addresses, char*, i));
+			if (i < addresses->len-1)
+				g_output_stream_printf(netplan, 0, NULL, NULL, ", ");
+		}
+		g_output_stream_printf(netplan, 0, NULL, NULL, "]\n");
+	}
 
 	write_ip_routing_rules (connection,
 	                        netplan);
