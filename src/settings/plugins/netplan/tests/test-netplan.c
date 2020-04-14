@@ -68,28 +68,14 @@
 
 /*****************************************************************************/
 
-static NMConnection *
-_connection_from_file (const char *filename,
-                       const char *network_file,
-                       const char *test_type,
-                       char **out_unhandled)
+static void
+_log_keyfile (NMConnection *con)
 {
-	NMConnection *connection;
-	GError *error = NULL;
-	char *unhandled_fallback = NULL;
-
-	g_assert (!out_unhandled || !*out_unhandled);
-
-	connection = nmtst_connection_from_file (filename, network_file, test_type,
-	                                         out_unhandled ?: &unhandled_fallback, &error);
-	g_assert_no_error (error);
-	g_assert (!unhandled_fallback);
-
-	if (out_unhandled && *out_unhandled)
-		nmtst_assert_connection_verifies (connection);
-	else
-		nmtst_assert_connection_verifies_without_normalization (connection);
-	return connection;
+	gs_unref_keyfile GKeyFile *kf = NULL;
+	gs_free char *str = NULL;
+	kf = nm_keyfile_write (con, NULL, NULL, NULL);
+	str = g_key_file_to_data (kf, NULL, NULL);
+	printf("===== Keyfile =====\n%s\n===== Keyfile End =====\n", str);
 }
 
 static void
@@ -102,6 +88,32 @@ _clear_all_netdefs (void)
 		g_hash_table_remove_all (netdefs);
 		_LOGT ("cleared %u prior netdefs", n);
 	}
+}
+
+static NMConnection *
+_connection_from_file (const char *filename,
+                       const char *network_file,
+                       const char *test_type,
+                       char **out_unhandled)
+{
+	NMConnection *connection;
+	GError *error = NULL;
+	char *unhandled_fallback = NULL;
+
+	g_assert (!out_unhandled || !*out_unhandled);
+
+	/* Clear netdefs before reading new data from file */
+	_clear_all_netdefs();
+	connection = nmtst_connection_from_file (filename, network_file, test_type,
+	                                         out_unhandled ?: &unhandled_fallback, &error);
+	g_assert_no_error (error);
+	g_assert (!unhandled_fallback);
+
+	if (out_unhandled && *out_unhandled)
+		nmtst_assert_connection_verifies (connection);
+	else
+		nmtst_assert_connection_verifies_without_normalization (connection);
+	return connection;
 }
 
 /* dummy path for an "expected" file, meaning: don't check for expected
@@ -234,7 +246,9 @@ _writer_new_connection_reread (NMConnection *connection,
 	g_assert (NM_IS_CONNECTION (connection));
 	g_assert (netplan_dir);
 
+	/* Duplicate connection and clear current netdefs, to continue testing with a clean state. */
 	con_verified = nmtst_connection_duplicate_and_normalize (connection);
+	_clear_all_netdefs();
 
 	success = nms_netplan_writer_write_connection (con_verified,
 	                                               netplan_dir,
@@ -293,7 +307,7 @@ test_read_basic_dhcp (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 
-	_clear_all_netdefs ();
+	// XXX: is wired-default.yaml still needed?
 	connection = _connection_from_file (TEST_NETPLAN_DIR"/basic-dhcp.yaml",
 	                                    TEST_NETPLAN_DIR"/wired-default.yaml",
 										NULL, NULL);
@@ -301,7 +315,7 @@ test_read_basic_dhcp (void)
 	/* ===== CONNECTION SETTING ===== */
 	s_con = nm_connection_get_setting_connection (connection);
 	g_assert_true (s_con);
-	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "wired-default");
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "System basic-dhcp.yaml");
 	g_assert_cmpint (nm_setting_connection_get_timestamp (s_con), ==, 0);
 	g_assert_true (nm_setting_connection_get_autoconnect (s_con));
 	g_assert_cmpint (nm_setting_connection_get_autoconnect_retries (s_con), ==, -1);
@@ -337,14 +351,13 @@ test_read_ethernet_match_mac (void)
 	const char *mac;
 	char expected_mac_address[ETH_ALEN] = { 0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe };
 
-	_clear_all_netdefs ();
 	connection = _connection_from_file (TEST_NETPLAN_DIR"/ethernet-match-mac.yaml",
 	                                    NULL, NULL, NULL);
 
 	/* ===== CONNECTION SETTING ===== */
 	s_con = nm_connection_get_setting_connection (connection);
 	g_assert_true (s_con);
-	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "eth0");
+	g_assert_cmpstr (nm_setting_connection_get_id (s_con), ==, "System ethernet-match-mac.yaml");
 	g_assert_cmpint (nm_setting_connection_get_timestamp (s_con), ==, 0);
 	g_assert_true (nm_setting_connection_get_autoconnect (s_con));
 	g_assert_cmpint (nm_setting_connection_get_autoconnect_retries (s_con), ==, -1);
@@ -420,7 +433,6 @@ test_write_wired_basic (void)
 	                        TEST_SCRATCH_DIR,
 	                        &testfile);
 
-	_clear_all_netdefs ();
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
 	nm_connection_add_setting (connection, nm_setting_proxy_new ());
@@ -537,11 +549,54 @@ test_write_wired_static (void)
 	                        TEST_SCRATCH_DIR,
 	                        &testfile);
 
-	_clear_all_netdefs ();
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
 	nm_connection_add_setting (connection, nm_setting_proxy_new ());
 	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
+static void
+test_read_write_wired_dhcp_send_hostname (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	const char * dhcp_hostname = "some-hostname";
+
+	connection = _connection_from_file (TEST_NETPLAN_DIR"/dhcp-hostname.yaml",
+	                                    NULL, NULL, NULL);
+
+	/* Check dhcp-hostname and dhcp-send-hostname */
+	s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	s_ip6 = nm_connection_get_setting_ip6_config (connection);
+	g_assert (s_ip4);
+	g_assert (s_ip6);
+	g_assert (nm_setting_ip_config_get_dhcp_send_hostname (s_ip4) == TRUE);
+	g_assert_cmpstr (nm_setting_ip_config_get_dhcp_hostname (s_ip4), ==, "test-name4");
+	g_assert (nm_setting_ip_config_get_dhcp_send_hostname (s_ip6) == TRUE);
+	g_assert_cmpstr (nm_setting_ip_config_get_dhcp_hostname (s_ip6), ==, "test-name6");
+
+	/* Set dhcp-send-hostname=false dhcp-hostname="some-hostname" and write the connection. */
+	g_object_set (s_ip4, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME, FALSE, NULL);
+	g_object_set (s_ip4, NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, dhcp_hostname, NULL);
+	g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME, FALSE, NULL);
+	g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, dhcp_hostname, NULL);
+
+	_writer_new_connection (connection, TEST_SCRATCH_DIR, &testfile);
+
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+
+	/* Check dhcp-hostname and dhcp-send-hostname from the re-read connection. */
+	s_ip4 = nm_connection_get_setting_ip4_config (reread);
+	s_ip6 = nm_connection_get_setting_ip6_config (reread);
+	g_assert (s_ip4);
+	g_assert (s_ip6);
+	g_assert (nm_setting_ip_config_get_dhcp_send_hostname (s_ip4) == FALSE);
+	g_assert_cmpstr (nm_setting_ip_config_get_dhcp_hostname (s_ip4), ==, dhcp_hostname);
+	g_assert_cmpstr (nm_setting_ip_config_get_dhcp_hostname (s_ip6), ==, dhcp_hostname);
 }
 
 /*****************************************************************************/
@@ -563,6 +618,7 @@ int main (int argc, char **argv)
 
 	g_test_add_func (TPATH "basic-dhcp", test_read_basic_dhcp);
 	g_test_add_func (TPATH "ethernet-match-mac", test_read_ethernet_match_mac);
+	g_test_add_func (TPATH "read-dhcp-send-hostname", test_read_write_wired_dhcp_send_hostname);
 
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);

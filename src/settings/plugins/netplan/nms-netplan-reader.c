@@ -211,12 +211,8 @@ make_connection_name (NetplanNetDefinition *nd,
 	if (name)
 		return name;
 
-	/* If the netplan file already has a NAME, always use that */
-	name = nd->id;
-	if (name)
-		return name;
-
 	/* Otherwise construct a new NAME */
+	/* XXX: Should we stick to netplan's "netplan-IFNAME[-SSID]" naming scheme? */
 	if (!prefix)
 		prefix = "System";
 
@@ -257,6 +253,7 @@ make_connection_setting (const char *file,
 	s_con = NM_SETTING_CONNECTION (nm_setting_connection_new ());
 
 	new_id = make_connection_name (nd, netplan_name, suggested, prefix);
+	g_assert_nonnull (nm_str_not_empty(new_id));
 	g_object_set (s_con, NM_SETTING_CONNECTION_ID, new_id, NULL);
 
 	/* Try for a UUID key before falling back to hashing the file name */
@@ -266,6 +263,7 @@ make_connection_setting (const char *file,
 		uuid = uuid_free;
 	}
 
+	/* XXX: nm.name might be unset, fall back to new_id instead */
 	stable_id = nd->backend_settings.nm.stable_id ? nd->backend_settings.nm.stable_id : nd->backend_settings.nm.name;
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_TYPE, type,
@@ -273,7 +271,9 @@ make_connection_setting (const char *file,
 	              NM_SETTING_CONNECTION_STABLE_ID, stable_id,
 	              NULL);
 
-	v = nd->backend_settings.nm.device;
+	/* Get iface/device name from NM backend settings. If missing, fall back to netdef ID. */
+	v = nd->backend_settings.nm.device ? nd->backend_settings.nm.device : nd->id;
+	g_assert_nonnull (nm_str_not_empty(v));
 	if (v) {
 		GError *error = NULL;
 
@@ -813,6 +813,10 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	//	return NM_SETTING (g_steal_pointer (&s_ip4));
 
 	/* Handle DHCP settings */
+	if (nd->dhcp4 && nd->dhcp4_overrides.hostname)
+		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, nd->dhcp4_overrides.hostname, NULL);
+	if (nd->dhcp4 && !nd->dhcp4_overrides.send_hostname)
+		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME, FALSE, NULL);
 #if 0
 	nm_clear_g_free (&value);
 	v = svGetValueStr (netplan, "DHCP_HOSTNAME", &value);
@@ -1155,6 +1159,12 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	                          NM_SETTING_IP6_CONFIG_METHOD_DISABLED))
 		return NM_SETTING (g_steal_pointer (&s_ip6));
 #endif
+
+	/* Handle DHCP settings */
+	if (nd->dhcp6 && nd->dhcp6_overrides.hostname)
+		g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, nd->dhcp6_overrides.hostname, NULL);
+	if (nd->dhcp6 && !nd->dhcp6_overrides.send_hostname)
+		g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME, FALSE, NULL);
 
 #if 0  /* TODO: Implement IPv6 DUID, hostname and special DHCP options */
 	nm_clear_g_free (&value);
