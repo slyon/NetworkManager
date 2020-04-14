@@ -13,5 +13,3 @@ network:
         hostname: test-name6
         send-hostname: true
         use-hostname: true
-      networkmanager:
-        stable-id: netplan-eth42-stable
