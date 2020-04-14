@@ -1,0 +1,17 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eth42:
+      dhcp4: yes
+      dhcp4-overrides:
+        hostname: test-name4
+        send-hostname: true
+        use-hostname: true
+      dhcp6: yes
+      dhcp6-overrides:
+        hostname: test-name6
+        send-hostname: true
+        use-hostname: true
+      networkmanager:
+        stable-id: netplan-eth42-stable

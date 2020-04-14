@@ -59,6 +59,32 @@
 
 /*****************************************************************************/
 
+static void
+write_array_to_sequence(GArray* arr, GOutputStream* s, char* start)
+{
+	g_output_stream_printf(s, 0, NULL, NULL, "%s [", start);
+	for (unsigned i = 0; i < arr->len; ++i) {
+		g_output_stream_printf(s, 0, NULL, NULL, "%s",
+								g_array_index(arr, char*, i));
+		if (i < arr->len-1)
+			g_output_stream_printf(s, 0, NULL, NULL, ", ");
+	}
+	g_output_stream_printf(s, 0, NULL, NULL, "]\n");
+}
+
+static struct HashToDict {
+	GOutputStream* stream;
+	gchar* indent;
+} HashToDict;
+
+static void
+write_hashtable_to_dict(gpointer key, gpointer value, gpointer user_data)
+{
+	struct HashToDict* d = user_data;
+	g_output_stream_printf(d->stream, 0, NULL, NULL, "%s%s: %s\n",
+	                       d->indent, (gchar*)key, (gchar*)value);
+}
+
 #if 0  /* GCC Magic */
 static void
 save_secret_flags (GOutputStream *netplan,
@@ -1769,12 +1795,12 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 
 	g_output_stream_printf (netplan, 0, NULL, NULL, "      networkmanager:\n");
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        name: %s\n", nm_setting_connection_get_id(s_con));
+	                        "        name: %s\n", nm_setting_connection_get_id(s_con));
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        uuid: %s\n", nm_setting_connection_get_uuid (s_con));
+	                        "        uuid: %s\n", nm_setting_connection_get_uuid (s_con));
+	// FIXME: avoid "stable-id: (null)"
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        stable-id: %s\n", nm_setting_connection_get_stable_id (s_con));
-	
+	                        "        stable-id: %s\n", nm_setting_connection_get_stable_id (s_con));
 	
 	// TODO: MOVE to header to identify the device / connection it is under
 	g_output_stream_printf (netplan, 0, NULL, NULL,
@@ -2286,12 +2312,27 @@ write_res_options (GHashTable *netplan, NMSettingIPConfig *s_ip, const char *var
 }
 #endif
 
+static void
+write_ip4_setting_dhcp_hostname (NMSettingIPConfig *s_ip4,
+                                 GHashTable *dhcp_overrides)
+{
+	const char *hostname;
+
+	hostname = nm_setting_ip_config_get_dhcp_hostname (s_ip4);
+	if (hostname)
+		g_hash_table_insert (dhcp_overrides, "hostname", g_strdup(hostname));
+
+	if (!nm_setting_ip_config_get_dhcp_send_hostname (s_ip4))
+		g_hash_table_insert (dhcp_overrides, "send-hostname", g_strdup("no"));
+}
+
 static gboolean
 write_ip4_setting (NMConnection *connection,
                    GOutputStream *netplan,
-		   GArray *addresses,
-		   GArray *nameservers,
-		   GArray *searches,
+                   GArray *addresses,
+                   GArray *nameservers,
+                   GArray *searches,
+                   GHashTable *dhcp_overrides,
                    GError **error)
 {
 	NMSettingIPConfig *s_ip4;
@@ -2388,6 +2429,7 @@ write_ip4_setting (NMConnection *connection,
 		g_array_append_val (searches, search);
 	}
 
+	write_ip4_setting_dhcp_hostname (s_ip4, dhcp_overrides);
 #if 0  // TODO: default-route toggles and peer, dhcp settings.
 	/* DEFROUTE; remember that it has the opposite meaning from never-default */
 	svSetValueBoolean (netplan, "DEFROUTE", !nm_setting_ip_config_get_never_default (s_ip4));
@@ -2504,7 +2546,8 @@ write_ip6_setting_dhcp_hostname (NMSettingIPConfig *s_ip6,
 	const char *hostname;
 
 	hostname = nm_setting_ip_config_get_dhcp_hostname (s_ip6);
-	g_hash_table_insert (dhcp_overrides, "use-hostname", g_strdup(hostname));
+	if (hostname)
+		g_hash_table_insert (dhcp_overrides, "hostname", g_strdup(hostname));
 
 	if (!nm_setting_ip_config_get_dhcp_send_hostname (s_ip6))
 		g_hash_table_insert (dhcp_overrides, "send-hostname", g_strdup("no"));
@@ -2721,7 +2764,7 @@ do_write_construct (NMConnection *connection,
 	//NMSettingIPConfig *s_ip6;
 	const gchar *type = NULL;
 	GArray *addresses, *nameservers, *searches;
-	GHashTable *dhcp_overrides;
+	GHashTable *dhcp4_overrides, *dhcp6_overrides;
 
 	nm_assert (NM_IS_CONNECTION (connection));
 	nm_assert (_nm_connection_verify (connection, NULL) == NM_SETTING_VERIFY_SUCCESS);
@@ -2729,7 +2772,8 @@ do_write_construct (NMConnection *connection,
 	addresses = g_array_new (TRUE, FALSE, sizeof(char *));
 	nameservers = g_array_new (TRUE, FALSE, sizeof(char *));
 	searches = g_array_new (TRUE, FALSE, sizeof(char *));
-	dhcp_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+	dhcp6_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+	dhcp4_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 
 	if (!nms_netplan_writer_can_write_connection (connection, error))
 		return FALSE;
@@ -2847,6 +2891,7 @@ do_write_construct (NMConnection *connection,
 	                        addresses,
 	                        nameservers,
 	                        searches,
+	                        dhcp4_overrides,
 	                        error))
 		return FALSE;
 
@@ -2855,52 +2900,51 @@ do_write_construct (NMConnection *connection,
 	                        addresses,
 	                        nameservers,
 	                        searches,
-	                        dhcp_overrides,
+	                        dhcp6_overrides,
 	                        error))
 		return FALSE;
 
 	/**
 	 * Write IP4 & IP6 addresses in CIDR format
 	 */
-	if (addresses->len > 0) {
-		g_output_stream_printf(netplan, 0, NULL, NULL, "      addresses: [");
-		for (unsigned i = 0; i < addresses->len; ++i) {
-			g_output_stream_printf(netplan, 0, NULL, NULL, "%s",
-			                       g_array_index(addresses, char*, i));
-			if (i < addresses->len-1)
-				g_output_stream_printf(netplan, 0, NULL, NULL, ", ");
-		}
-		g_output_stream_printf(netplan, 0, NULL, NULL, "]\n");
-	}
+	if (addresses->len > 0)
+		write_array_to_sequence(addresses, netplan, "      addresses:");
 
 	/**
 	 * Write IP4 & IP6 DNS nameserver addresses and search
 	 */
 	if (nameservers->len > 0 || searches->len > 0)
 		g_output_stream_printf(netplan, 0, NULL, NULL, "      nameservers:\n");
-	if (nameservers->len > 0) {
-		g_output_stream_printf(netplan, 0, NULL, NULL, "        addresses: [");
-		for (unsigned i = 0; i < nameservers->len; ++i) {
-			g_output_stream_printf(netplan, 0, NULL, NULL, "%s",
-			                       g_array_index(nameservers, char*, i));
-			if (i < nameservers->len-1)
-				g_output_stream_printf(netplan, 0, NULL, NULL, ", ");
-		}
-		g_output_stream_printf(netplan, 0, NULL, NULL, "]\n");
-	}
-	if (searches->len > 0) {
-		g_output_stream_printf(netplan, 0, NULL, NULL, "        search: [");
-		for (unsigned i = 0; i < searches->len; ++i) {
-			g_output_stream_printf(netplan, 0, NULL, NULL, "%s",
-			                       g_array_index(searches, char*, i));
-			if (i < searches->len-1)
-				g_output_stream_printf(netplan, 0, NULL, NULL, ", ");
-		}
-		g_output_stream_printf(netplan, 0, NULL, NULL, "]\n");
+	if (nameservers->len > 0)
+		write_array_to_sequence(nameservers, netplan, "        addresses:");
+	if (searches->len > 0)
+		write_array_to_sequence(searches, netplan, "        search:");
+
+	/**
+	 * Write dhcp6-overrides
+	 */
+	if (g_hash_table_size(dhcp6_overrides) > 0) {
+		struct HashToDict htd;
+		htd.stream = netplan;
+		htd.indent = g_strdup("        ");
+		g_output_stream_printf(netplan, 0, NULL, NULL, "      dhcp6-overrides:\n");
+		g_hash_table_foreach(dhcp6_overrides, write_hashtable_to_dict, &htd);
+		g_free(htd.indent);
 	}
 
-	write_ip_routing_rules (connection,
-	                        netplan);
+	/**
+	 * Write dhcp4-overrides
+	 */
+	if (g_hash_table_size(dhcp4_overrides) > 0) {
+		struct HashToDict htd;
+		htd.stream = netplan;
+		htd.indent = g_strdup("        ");
+		g_output_stream_printf(netplan, 0, NULL, NULL, "      dhcp4-overrides:\n");
+		g_hash_table_foreach(dhcp4_overrides, write_hashtable_to_dict, &htd);
+		g_free(htd.indent);
+	}
+
+	write_ip_routing_rules (connection, netplan);
 
 	write_connection_setting (s_con, netplan);
 
