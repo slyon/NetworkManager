@@ -263,8 +263,8 @@ make_connection_setting (const char *file,
 		uuid = uuid_free;
 	}
 
-	/* XXX: nm.name might be unset, fall back to new_id instead */
-	stable_id = nd->backend_settings.nm.stable_id ? nd->backend_settings.nm.stable_id : nd->backend_settings.nm.name;
+	/* xxx: Could the stable-id also stay unset? */
+	stable_id = nd->backend_settings.nm.stable_id ? nd->backend_settings.nm.stable_id : g_strdup(new_id);
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_TYPE, type,
 	              NM_SETTING_CONNECTION_UUID, uuid,

@@ -1791,16 +1791,17 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 	//NMSettingConnectionMdns mdns;
 	//NMSettingConnectionLlmnr llmnr;
 	//guint32 vuint32;
-	//const char *tmp;
+	const char *tmp;
 
 	g_output_stream_printf (netplan, 0, NULL, NULL, "      networkmanager:\n");
 	g_output_stream_printf (netplan, 0, NULL, NULL,
 	                        "        name: %s\n", nm_setting_connection_get_id(s_con));
 	g_output_stream_printf (netplan, 0, NULL, NULL,
 	                        "        uuid: %s\n", nm_setting_connection_get_uuid (s_con));
-	// FIXME: avoid "stable-id: (null)"
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-	                        "        stable-id: %s\n", nm_setting_connection_get_stable_id (s_con));
+	tmp = nm_setting_connection_get_stable_id (s_con);
+	if (tmp)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "        stable-id: %s\n", tmp);
 	
 	// TODO: MOVE to header to identify the device / connection it is under
 	g_output_stream_printf (netplan, 0, NULL, NULL,
