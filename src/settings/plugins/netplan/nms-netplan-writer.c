@@ -2791,6 +2791,7 @@ do_write_construct (NMConnection *connection,
 	g_output_stream_printf (netplan, 0, NULL, NULL,
 			        "network:\n  version: 2\n  renderer: NetworkManager\n");
 
+	// XXX: How to handle unknown iface name in netplan?
 	if (!strcmp (type, NM_SETTING_WIRED_SETTING_NAME)) {
 		// TODO: Implement PPPoE support.
 		if (nm_connection_get_setting_pppoe (connection)) {

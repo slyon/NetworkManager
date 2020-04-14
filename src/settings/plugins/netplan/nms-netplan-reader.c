@@ -263,8 +263,8 @@ make_connection_setting (const char *file,
 		uuid = uuid_free;
 	}
 
-	/* xxx: Could the stable-id also stay unset? */
-	stable_id = nd->backend_settings.nm.stable_id ? nd->backend_settings.nm.stable_id : g_strdup(new_id);
+	/* XXX: Can the stable-id be unset, or do we need to create one? E.g. via g_strdup(new_id)? */
+	stable_id = nd->backend_settings.nm.stable_id ? nd->backend_settings.nm.stable_id : NULL;
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_TYPE, type,
 	              NM_SETTING_CONNECTION_UUID, uuid,
@@ -1527,7 +1527,7 @@ fill_wpa_ciphers (NetplanNetDefinition *nd,
 #define WPA_PMK_LEN 32
 
 static char *
-parse_wpa_psk (NetplanNetDefinition *nd,
+parse_wpa_psk (NetplanWifiAccessPoint *ap,
                const char *file,
                GBytes *ssid,
                GError **error)
@@ -1540,7 +1540,7 @@ parse_wpa_psk (NetplanNetDefinition *nd,
 	 * are between 8 and 63 characters (inclusive), plus optional quoting if
 	 * the passphrase contains spaces.
 	 */
-	psk = nd->auth.password;
+	psk = ap->auth.password;
 
 	if (!psk)
 		return NULL;
@@ -1595,59 +1595,66 @@ make_wpa_setting (NetplanNetDefinition *nd,
 	const char *v;
 	//int i_val;
 	GError *local = NULL;
+	GHashTableIter iter;
+	gpointer key, val;
 
-	wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
+	g_hash_table_iter_init (&iter, nd->access_points);
+	g_hash_table_iter_next (&iter, &key, &val);
+	if (val) {
+		NetplanWifiAccessPoint *ap = (NetplanWifiAccessPoint *) val;
 
-	if (nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
-		&& nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_WPA_EAP
-		&& nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_8021X)
-		return NULL; /* Not WPA or Dynamic WEP */
+		wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
 
-#if 0  /* TODO: support WPS */
-	/* WPS */
-	i_val = NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_DEFAULT;
-	if (!svGetValueEnum (netplan, "WPS_METHOD",
-	                     nm_setting_wireless_security_wps_method_get_type (),
-	                     &i_val, error))
-		return NULL;
-	g_object_set (wsec,
-	              NM_SETTING_WIRELESS_SECURITY_WPS_METHOD, (guint) i_val,
-	              NULL);
-#endif
+		if (ap->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
+			&& ap->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_WPA_EAP
+			&& ap->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_8021X)
+			return NULL; /* Not WPA or Dynamic WEP */
 
-	/* Pairwise and Group ciphers (only relevant for WPA/RSN) */
-	if (nd->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
-		|| nd->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_EAP) {
-		fill_wpa_ciphers (nd, wsec, FALSE, adhoc);
-		fill_wpa_ciphers (nd, wsec, TRUE, adhoc);
-	}
-
-	/* Adhoc only supports RSN */
-	if (!adhoc)
-		nm_setting_wireless_security_add_proto (wsec, "wpa");
-	nm_setting_wireless_security_add_proto (wsec, "rsn");
-
-	if (nd->auth.password) {
-		gs_free char *psk = NULL;
-		psk = parse_wpa_psk (nd, file, ssid, &local);
-		if (psk)
-			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_PSK, psk, NULL);
-		else if (local) {
-			g_propagate_error (error, local);
+	#if 0  /* TODO: support WPS */
+		/* WPS */
+		i_val = NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_DEFAULT;
+		if (!svGetValueEnum (netplan, "WPS_METHOD",
+							nm_setting_wireless_security_wps_method_get_type (),
+							&i_val, error))
 			return NULL;
+		g_object_set (wsec,
+					NM_SETTING_WIRELESS_SECURITY_WPS_METHOD, (guint) i_val,
+					NULL);
+	#endif
+
+		/* Pairwise and Group ciphers (only relevant for WPA/RSN) */
+		if (ap->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
+			|| ap->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_EAP) {
+			fill_wpa_ciphers (nd, wsec, FALSE, adhoc);
+			fill_wpa_ciphers (nd, wsec, TRUE, adhoc);
 		}
+
+		/* Adhoc only supports RSN */
+		if (adhoc)
+			nm_setting_wireless_security_add_proto (wsec, "rsn");
+		/* Else: Stay with the default, i.e.: wpa;rsn; */
+
+		if (ap->auth.password) {
+			gs_free char *psk = NULL;
+			psk = parse_wpa_psk (val, file, ssid, &local);
+			if (psk)
+				g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_PSK, psk, NULL);
+			else if (local) {
+				g_propagate_error (error, local);
+				return NULL;
+			}
+		}
+
+		if (ap->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK)
+			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
+		else {
+			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap", NULL);
+		}
+	} else {
+		*s_8021x = fill_8021x (nd, file, v, TRUE, error);
+		if (!*s_8021x)
+			return NULL;
 	}
-
-	if (nd->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK)
-		g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
-	else {
-		g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap", NULL);
-	}
-
-	*s_8021x = fill_8021x (nd, file, v, TRUE, error);
-	if (!*s_8021x)
-		return NULL;
-
 	/* TODO: support WPA PMF, FILS */
 
 #if 0
@@ -1772,13 +1779,9 @@ make_wireless_setting (NetplanNetDefinition *nd,
 		g_free (value);
 	}
 
-#if 0  /* TODO: read in generate_mac_address_mask ? */
-	//g_object_set (s_wireless, NM_SETTING_WIRELESS_MAC_ADDRESS, value, NULL);
-
-	value = svGetValueStr_cp (netplan, "GENERATE_MAC_ADDRESS_MASK");
-	g_object_set (s_wireless, NM_SETTING_WIRELESS_GENERATE_MAC_ADDRESS_MASK, value, NULL);
-	g_free (value);
-#endif
+	value = nd->match.mac;
+	if (value)
+		g_object_set (s_wireless, NM_SETTING_WIRELESS_MAC_ADDRESS, value, NULL);
 
 	g_hash_table_iter_init (&iter, nd->access_points);
 	g_hash_table_iter_next (&iter, &key, &value);
@@ -1838,7 +1841,7 @@ make_wireless_setting (NetplanNetDefinition *nd,
 	/* TODO: Support toggling powersave for wifi */
 	g_object_set (s_wireless,
 	              NM_SETTING_WIRELESS_POWERSAVE,
-	              NM_SETTING_WIRELESS_POWERSAVE_ENABLE,
+	              NM_SETTING_WIRELESS_POWERSAVE_DEFAULT,
 	              NULL);
 
 #if 0  /* TODO: Add support for MAC address randomization */
