@@ -1001,6 +1001,7 @@ write_modem_setting (NMConnection *connection,
 	void *s_modem = NULL;
 	const char* tmp;
 	gboolean is_gsm = FALSE;
+	guint32 mtu = 0;
 
 	if (!strcmp(type, NM_SETTING_GSM_SETTING_NAME)) {
 		is_gsm = TRUE;
@@ -1016,15 +1017,50 @@ write_modem_setting (NMConnection *connection,
 
 	/* Write GSM only features */
 	if (is_gsm) {
+		if (nm_setting_gsm_get_auto_config (s_modem))
+			g_output_stream_printf (netplan, 0, NULL, NULL, "      auto-config: true\n");
+
 		tmp = nm_setting_gsm_get_apn (s_modem);
 		if (nm_str_not_empty(tmp))
 			g_output_stream_printf (netplan, 0, NULL, NULL, "      apn: %s\n", tmp);
+
+		tmp = nm_setting_gsm_get_device_id (s_modem);
+		if (nm_str_not_empty(tmp))
+			g_output_stream_printf (netplan, 0, NULL, NULL, "      device-id: %s\n", tmp);
+
+		tmp = nm_setting_gsm_get_network_id (s_modem);
+		if (nm_str_not_empty(tmp))
+			g_output_stream_printf (netplan, 0, NULL, NULL, "      network-id: %s\n", tmp);
+
+		tmp = nm_setting_gsm_get_pin (s_modem);
+		if (nm_str_not_empty(tmp))
+			g_output_stream_printf (netplan, 0, NULL, NULL, "      pin: %s\n", tmp);
+
+		tmp = nm_setting_gsm_get_sim_id (s_modem);
+		if (nm_str_not_empty(tmp))
+			g_output_stream_printf (netplan, 0, NULL, NULL, "      sim-id: %s\n", tmp);
+
+		tmp = nm_setting_gsm_get_sim_operator_id (s_modem);
+		if (nm_str_not_empty(tmp))
+			g_output_stream_printf (netplan, 0, NULL, NULL, "      sim-operator-id: %s\n", tmp);
 	}
 
 	/* Write GSM/CDMA features */
 	tmp = is_gsm ? nm_setting_gsm_get_number (s_modem) : nm_setting_cdma_get_number (s_modem);
 	if (nm_str_not_empty(tmp))
 		g_output_stream_printf (netplan, 0, NULL, NULL, "      number: \"%s\"\n", tmp);
+
+	tmp = is_gsm ? nm_setting_gsm_get_password (s_modem) : nm_setting_cdma_get_password (s_modem);
+	if (nm_str_not_empty(tmp))
+		g_output_stream_printf (netplan, 0, NULL, NULL, "      password: \"%s\"\n", tmp);
+
+	tmp = is_gsm ? nm_setting_gsm_get_username (s_modem) : nm_setting_cdma_get_username (s_modem);
+	if (nm_str_not_empty(tmp))
+		g_output_stream_printf (netplan, 0, NULL, NULL, "      username: \"%s\"\n", tmp);
+
+	mtu = is_gsm ? nm_setting_gsm_get_mtu (s_modem) : nm_setting_cdma_get_mtu (s_modem);
+	if (mtu > 0)
+		g_output_stream_printf (netplan, 0, NULL, NULL, "      mtu: \"%u\"\n", mtu);
 
 	return TRUE;
 }
