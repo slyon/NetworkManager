@@ -1946,6 +1946,90 @@ wireless_connection_from_netplan (const char *file,
 	return connection;
 }
 
+static NMSetting *
+make_modem_setting (NetplanNetDefinition *nd,
+                    GError **error,
+                    gboolean is_gsm)
+{
+	void *s_modem;
+	const char *tmp;
+	const char *field;
+
+	s_modem = is_gsm ?
+	          NM_SETTING_GSM (nm_setting_gsm_new ()) :
+	          NM_SETTING_CDMA (nm_setting_cdma_new());
+
+	/* Make GSM only settings */
+	if (is_gsm) {
+		tmp = nd->modem_params.apn;
+		if (tmp)
+			g_object_set (s_modem, NM_SETTING_GSM_APN, tmp, NULL);
+	}
+
+	/* Make GSM/CDMA settings */
+	tmp = nd->modem_params.number;
+	field = is_gsm ? NM_SETTING_GSM_NUMBER : NM_SETTING_CDMA_NUMBER;
+	if (tmp)
+		g_object_set (s_modem, field, tmp, NULL);
+
+	return NM_SETTING (s_modem);
+
+error:
+	if (s_modem)
+		g_object_unref (s_modem);
+	return NULL;
+}
+
+static NMConnection *
+modem_connection_from_netplan (const char *file,
+                               NetplanNetDefinition *nd,
+                               GError **error)
+{
+	NMConnection *connection = NULL;
+	NMSetting *con_setting = NULL;
+	NMSetting *modem_setting = NULL;
+	gboolean is_gsm = FALSE;
+	GError *local = NULL;
+
+	g_return_val_if_fail (file != NULL, NULL);
+	g_return_val_if_fail (nd != NULL, NULL);
+	g_return_val_if_fail (!error || !*error, NULL);
+
+	connection = nm_simple_connection_new ();
+
+	// XXX: make this part of the netplan library
+	/* Same check as defined in netplan/src/nm.c:modem_is_gsm() */
+	if (nd->modem_params.apn ||  nd->modem_params.auto_config ||
+	    nd->modem_params.device_id || nd->modem_params.network_id ||
+		nd->modem_params.pin || nd->modem_params.sim_id ||
+		nd->modem_params.sim_operator_id)
+        is_gsm = TRUE;
+
+	/* Modem */
+	modem_setting = make_modem_setting (nd, error, is_gsm);
+	if (!modem_setting) {
+		g_object_unref (connection);
+		return NULL;
+	}
+	nm_connection_add_setting (connection, modem_setting);
+
+	/* Connection */
+	con_setting = make_connection_setting (file, nd, is_gsm ?
+	                                       NM_SETTING_GSM_SETTING_NAME :
+										   NM_SETTING_CDMA_SETTING_NAME,
+	                                       NULL, NULL);
+
+	if (!con_setting) {
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+		             "Failed to create connection setting.");
+		g_object_unref (connection);
+		return NULL;
+	}
+	nm_connection_add_setting (connection, con_setting);
+
+	return connection;
+}
+
 /* TODO: Support ethtool settings */
 
 #if 0  /* TODO: Read routing rules (routing-policy) */
@@ -2761,6 +2845,9 @@ connection_from_file_full (const char *filename,
 		break;
 	case NETPLAN_DEF_TYPE_WIFI:
 		connection = wireless_connection_from_netplan (filename, netdef, error);
+		break;
+	case NETPLAN_DEF_TYPE_MODEM:
+		connection = modem_connection_from_netplan (filename, netdef, error);
 		break;
 	case NETPLAN_DEF_TYPE_BRIDGE:
 		connection = bridge_connection_from_netplan (filename, netdef, error);

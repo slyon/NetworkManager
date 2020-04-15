@@ -600,7 +600,7 @@ test_read_write_wired_dhcp_send_hostname (void)
 }
 
 static void
-test_example_field_1 (void)
+test_example_field_wifi (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
 	gs_unref_object NMConnection *connection = NULL;
@@ -610,7 +610,6 @@ test_example_field_1 (void)
 	NMSettingWirelessSecurity *s_wsec;
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
-	GError *error = NULL;
 	GBytes *ssid;
 
 	_clear_all_netdefs ();
@@ -682,6 +681,70 @@ test_example_field_1 (void)
 	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
 }
 
+static void
+test_example_field_lte (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingGsm *s_gsm;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "lte",
+	              NM_SETTING_CONNECTION_UUID, "b22d8f0f-3f34-46bd-ac28-801fa87f1eb6",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_GSM_SETTING_NAME,
+				  NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
+				  //NM_SETTING_CONNECTION_PERMISSIONS, "",
+				  //NM_SETTING_CONNECTION_SECONDARIES, "",
+	              NULL);
+
+	/* Wireless setting */
+	s_gsm = (NMSettingGsm *) nm_setting_gsm_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_gsm));
+	g_object_set (s_gsm,
+	              NM_SETTING_GSM_APN, "bicsapn",
+				  NM_SETTING_GSM_NUMBER, "*99#",
+	              NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+				  //TODO: dns-search=
+	              NULL);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+				  NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY,
+				  //TODO: dns-search=
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection,
+	                        TEST_SCRATCH_DIR,
+	                        &testfile);
+
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
 /*****************************************************************************/
 
 #define TPATH "/settings/plugins/neptlan/"
@@ -706,7 +769,8 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);
 
-	g_test_add_func (TPATH "example/field/1", test_example_field_1);
+	g_test_add_func (TPATH "example/field/wifi", test_example_field_wifi);
+	g_test_add_func (TPATH "example/field/lte", test_example_field_lte);
 
 	return g_test_run ();
 }
