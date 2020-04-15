@@ -1960,7 +1960,8 @@ src_settings_plugins_netplan_libnms_netplan_core_la_SOURCES = \
 	src/settings/plugins/netplan/nms-netplan-writer.h \
 	$(NULL)
 
-src_settings_plugins_netplan_libnms_netplan_core_la_CPPFLAGS = $(src_cppflags_base) $(UUID_CFLAGS)
+src_settings_plugins_netplan_libnms_netplan_core_la_CPPFLAGS = \
+	$(src_cppflags) $(src_cppflags_base) $(UUID_CFLAGS)
 
 $(src_settings_plugins_netplan_libnms_netplan_core_la_OBJECTS): $(libnm_core_lib_h_pub_mkenums)
 
@@ -2002,6 +2003,7 @@ src_settings_plugins_netplan_tests_test_netplan_SOURCES = \
 	src/settings/plugins/netplan/tests/test-netplan.c
 
 src_settings_plugins_netplan_tests_test_netplan_CPPFLAGS = \
+	$(src_tests_cppflags) \
 	$(src_cppflags_base_test) \
 	$(UUID_CFLAGS)
 

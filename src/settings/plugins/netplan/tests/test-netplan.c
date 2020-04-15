@@ -31,14 +31,14 @@
 #include "nm-setting-pppoe.h"
 #include "nm-setting-ppp.h"
 #include "nm-setting-vpn.h"
-#include "nm-setting-ethtool.h"
+//#include "nm-setting-ethtool.h"
 #include "nm-setting-gsm.h"
 #include "nm-setting-cdma.h"
 #include "nm-setting-serial.h"
 #include "nm-setting-vlan.h"
 #include "nm-setting-dcb.h"
 #include "nm-core-internal.h"
-#include "nm-libnm-core-intern/nm-ethtool-utils.h"
+//#include "nm-libnm-core-intern/nm-ethtool-utils.h"
 
 #include "NetworkManagerUtils.h"
 
