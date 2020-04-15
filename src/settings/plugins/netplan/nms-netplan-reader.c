@@ -1256,21 +1256,20 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 		}
 	}
 
-	i_val = NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64;
-	if (!svGetValueEnum (netplan, "IPV6_ADDR_GEN_MODE",
-	                     nm_setting_ip6_config_addr_gen_mode_get_type (),
-	                     &i_val, &local)) {
-		PARSE_WARNING ("%s", local->message);
-		g_clear_error (&local);
-	}
-	g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, i_val, NULL);
-
 	/* IPv6 tokenized interface identifier */
 	nm_clear_g_free (&value);
 	v = svGetValueStr (netplan, "IPV6_TOKEN", &value);
 	if (v)
 		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_TOKEN, v, NULL);
 #endif
+
+	/* IPv6 Address generation mode */
+	if (nd->ip6_addr_gen_mode == NETPLAN_ADDRGEN_STABLEPRIVACY)
+		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE,
+					  NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY, NULL);
+	else if (nd->ip6_addr_gen_mode == NETPLAN_ADDRGEN_EUI64)
+		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE,
+		              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64, NULL);
 
 #if 0  /* TODO: set dns servers */
 	/* DNS servers
