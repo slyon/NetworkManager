@@ -639,7 +639,7 @@ make_match_setting (NetplanNetDefinition *nd)
 	s_match = (NMSettingMatch *) nm_setting_match_new ();
 
 	v = nd->match.original_name;
-	if (!v)
+	if (!nd->has_match || !v)
 		return NULL;
 
 	nm_setting_match_add_interface_name (s_match, v);
