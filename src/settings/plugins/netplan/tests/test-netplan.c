@@ -600,6 +600,128 @@ test_read_write_wired_dhcp_send_hostname (void)
 }
 
 static void
+test_write_modem_gsm (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingGsm *s_modem;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "gsm",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_GSM_SETTING_NAME,
+				  NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
+	              NULL);
+
+	/* Modem setting */
+	s_modem = (NMSettingGsm *) nm_setting_gsm_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_modem));
+	g_object_set (s_modem,
+	              NM_SETTING_GSM_AUTO_CONFIG, FALSE,
+	              NM_SETTING_GSM_APN, "internet",
+	              NM_SETTING_GSM_DEVICE_ID, "dev-123",
+	              NM_SETTING_GSM_NETWORK_ID, "123456",
+	              NM_SETTING_GSM_PIN, "0000",
+	              NM_SETTING_GSM_SIM_ID, "sim-123",
+	              NM_SETTING_GSM_SIM_OPERATOR_ID, "123456",
+	              NM_SETTING_GSM_NUMBER, "*99#",
+	              NM_SETTING_GSM_USERNAME, "user",
+	              NM_SETTING_GSM_PASSWORD, "passw0rd",
+	              NM_SETTING_GSM_MTU, 1600,
+	              NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64,
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection, TEST_SCRATCH_DIR, &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
+static void
+test_write_modem_cdma (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingCdma *s_modem;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "cdma",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_CDMA_SETTING_NAME,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
+	              NULL);
+
+	/* Modem setting */
+	s_modem = (NMSettingGsm *) nm_setting_cdma_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_modem));
+	g_object_set (s_modem,
+	              NM_SETTING_GSM_NUMBER, "*99#",
+	              NM_SETTING_GSM_USERNAME, "user",
+	              NM_SETTING_GSM_PASSWORD, "passw0rd",
+	              NM_SETTING_GSM_MTU, 1600,
+	              NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection, TEST_SCRATCH_DIR, &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
+static void
 test_example_field_wifi (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -768,6 +890,9 @@ int main (int argc, char **argv)
 
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);
+
+	g_test_add_func (TPATH "modem/write/gsm", test_write_modem_gsm);
+	g_test_add_func (TPATH "modem/write/cdma", test_write_modem_cdma);
 
 	g_test_add_func (TPATH "example/field/wifi", test_example_field_wifi);
 	g_test_add_func (TPATH "example/field/lte", test_example_field_lte);
