@@ -992,6 +992,43 @@ write_wireless_setting (NMConnection *connection,
 	return TRUE;
 }
 
+static gboolean
+write_modem_setting (NMConnection *connection,
+                     GOutputStream *netplan,
+                     GError **error,
+                     const char* type)
+{
+	void *s_modem = NULL;
+	const char* tmp;
+	gboolean is_gsm = FALSE;
+
+	if (!strcmp(type, NM_SETTING_GSM_SETTING_NAME)) {
+		is_gsm = TRUE;
+		s_modem = (NMSettingGsm *) nm_connection_get_setting_gsm (connection);
+	} else if (!strcmp(type, NM_SETTING_CDMA_SETTING_NAME))
+		s_modem = (NMSettingCdma *) nm_connection_get_setting_cdma (connection);
+
+	if (!s_modem) {
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+		             "Missing '%s' setting", type);
+		return FALSE;
+	}
+
+	/* Write GSM only features */
+	if (is_gsm) {
+		tmp = nm_setting_gsm_get_apn (s_modem);
+		if (nm_str_not_empty(tmp))
+			g_output_stream_printf (netplan, 0, NULL, NULL, "      apn: %s\n", tmp);
+	}
+
+	/* Write GSM/CDMA features */
+	tmp = is_gsm ? nm_setting_gsm_get_number (s_modem) : nm_setting_cdma_get_number (s_modem);
+	if (nm_str_not_empty(tmp))
+		g_output_stream_printf (netplan, 0, NULL, NULL, "      number: \"%s\"\n", tmp);
+
+	return TRUE;
+}
+
 #if 0 // TODO: implement infiniband!
 static gboolean
 write_infiniband_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
@@ -2812,13 +2849,12 @@ do_write_construct (NMConnection *connection,
 		                        nm_connection_get_interface_name (connection));
 		if (!write_vlan_setting (connection, netplan, error))
 			return FALSE;
-	} else if (!strcmp (type, NM_SETTING_GSM_SETTING_NAME)) {
-		// TODO: add NM_SETTING_GSM_SETTING_NAME
-		//       see: https://github.com/CanonicalLtd/netplan/commit/76aa65e67c6a406548cdc4b866e0e0f54ab2b363
-		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
-			         "Can't write connection type '%s'",
-			         NM_SETTING_GSM_SETTING_NAME);
-		return FALSE;
+	} else if (NM_IN_STRSET (type, NM_SETTING_GSM_SETTING_NAME, NM_SETTING_CDMA_SETTING_NAME)) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "  modems:\n    %s:\n",
+		                        nm_connection_get_interface_name (connection));
+		if (!write_modem_setting (connection, netplan, error, type))
+			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_WIRELESS_SETTING_NAME)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "  wifis:\n    %s:\n",
@@ -3108,10 +3144,11 @@ nms_netplan_writer_can_write_connection (NMConnection *connection, GError **erro
 
 	type = nm_connection_get_connection_type (connection);
 	_LOGD ("MATT: writing \"%s\"", type);
-	// TODO: add NM_SETTING_GSM_SETTING_NAME
 	if (NM_IN_STRSET (type,
 	                  NM_SETTING_VLAN_SETTING_NAME,
 	                  NM_SETTING_WIRELESS_SETTING_NAME,
+	                  NM_SETTING_GSM_SETTING_NAME,
+	                  NM_SETTING_CDMA_SETTING_NAME,
 	                  NM_SETTING_BOND_SETTING_NAME,
 	                  NM_SETTING_TEAM_SETTING_NAME,
 	                  NM_SETTING_BRIDGE_SETTING_NAME))
