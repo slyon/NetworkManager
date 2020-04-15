@@ -2610,7 +2610,7 @@ write_ip6_setting (NMConnection *connection,
 	//gint64 route_metric;
 	//NMIPRouteTableSyncMode route_table;
 	GString *ip_str;
-	//NMSettingIP6ConfigAddrGenMode addr_gen_mode;
+	NMSettingIP6ConfigAddrGenMode addr_gen_mode;
 
 	s_ip6 = nm_connection_get_setting_ip6_config (connection);
 	if (!s_ip6) {
@@ -2715,17 +2715,17 @@ write_ip6_setting (NMConnection *connection,
 	break;
 	}
 
-#if 0
-    // TODO: Support address generation and interface identified. (not in netplan yet)
 	/* IPv6 Address generation mode */
 	addr_gen_mode = nm_setting_ip6_config_get_addr_gen_mode (NM_SETTING_IP6_CONFIG (s_ip6));
-	if (addr_gen_mode != NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64) {
-		svSetValueEnum (netplan, "IPV6_ADDR_GEN_MODE", nm_setting_ip6_config_addr_gen_mode_get_type (),
-		                addr_gen_mode);
-	} else {
-		svUnsetValue (netplan, "IPV6_ADDR_GEN_MODE");
-	}
+	if (addr_gen_mode == NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY)
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+		                       "      ipv6-address-generation: stable-privacy\n");
+	else if (addr_gen_mode == NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64)
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+		                       "      ipv6-address-generation: eui64\n");
 
+#if 0
+	// TODO: Support interface identifier. (not in netplan yet)
 	/* IPv6 tokenized interface identifier */
 	value = nm_setting_ip6_config_get_token (NM_SETTING_IP6_CONFIG (s_ip6));
 	svSetValueStr (netplan, "IPV6_TOKEN", value);

@@ -622,9 +622,9 @@ test_example_field_wifi (void)
 	              NM_SETTING_CONNECTION_ID, "H369AAB53B0",
 	              NM_SETTING_CONNECTION_UUID, "cbe5d88b-b891-48e5-af35-3397891cea62",
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
-				  //NM_SETTING_CONNECTION_PERMISSIONS, "",
-				  //NM_SETTING_CONNECTION_SECONDARIES, "",
-				  NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
+	              //NM_SETTING_CONNECTION_PERMISSIONS, "",
+	              //NM_SETTING_CONNECTION_SECONDARIES, "",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
 	              NULL);
 
 	/* Wireless setting */
@@ -633,22 +633,22 @@ test_example_field_wifi (void)
 	ssid = g_bytes_new ("H369AAB53B0", 11);
 	g_object_set (s_wireless,
 	              NM_SETTING_WIRELESS_MAC_ADDRESS, "00:23:A7:FA:76:E4",
-				  //NM_SETTING_WIRELESS_MAC_ADDRESS_BLACKLIST, "",
-				  NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION, 0,
-				  NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_INFRA,
-				  //NM_SETTING_WIRELESS_SEEN_BSSIDS, "",
-				  NM_SETTING_WIRELESS_SSID, ssid,
+	              //NM_SETTING_WIRELESS_MAC_ADDRESS_BLACKLIST, "",
+	              NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION, 0,
+	              NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_INFRA,
+	              //NM_SETTING_WIRELESS_SEEN_BSSIDS, "",
+	              NM_SETTING_WIRELESS_SSID, ssid,
 	              NULL);
 
 	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
 	g_object_set (s_wsec,
-				  //NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "open", // XXX: This seems to be invalid: Only valid for WEP, not WPA-PSK
-				  //NM_SETTING_WIRELESS_SECURITY_GROUP, "",
-				  NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk",
-				  //NM_SETTING_WIRELESS_SECURITY_PAIRWISE, ""
-				  //NM_SETTING_WIRELESS_SECURITY_PROTO, "",
-				  NM_SETTING_WIRELESS_SECURITY_PSK, "passw0rd",
+	              //NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "open", // XXX: This seems to be invalid: Only valid for WEP, not WPA-PSK
+	              //NM_SETTING_WIRELESS_SECURITY_GROUP, "",
+	              NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk",
+	              //NM_SETTING_WIRELESS_SECURITY_PAIRWISE, ""
+	              //NM_SETTING_WIRELESS_SECURITY_PROTO, "",
+	              NM_SETTING_WIRELESS_SECURITY_PSK, "passw0rd",
 	              NULL);
 
 	/* IP4 setting */
@@ -656,7 +656,7 @@ test_example_field_wifi (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
 	g_object_set (s_ip4,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
-				  //TODO: dns-search=
+	              //TODO: dns-search=
 	              NULL);
 
 	/* IP6 setting */
@@ -665,8 +665,8 @@ test_example_field_wifi (void)
 
 	g_object_set (s_ip6,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
-				  NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY,
-				  //TODO: dns-search=
+	              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY,
+	              //TODO: dns-search=
 	              NULL);
 
 	nmtst_assert_connection_verifies (connection);
@@ -702,12 +702,12 @@ test_example_field_lte (void)
 	              NM_SETTING_CONNECTION_ID, "lte",
 	              NM_SETTING_CONNECTION_UUID, "b22d8f0f-3f34-46bd-ac28-801fa87f1eb6",
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_GSM_SETTING_NAME,
-				  NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
-				  //NM_SETTING_CONNECTION_PERMISSIONS, "",
-				  //NM_SETTING_CONNECTION_SECONDARIES, "",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
+	              //NM_SETTING_CONNECTION_PERMISSIONS, "",
+	              //NM_SETTING_CONNECTION_SECONDARIES, "",
 	              NULL);
 
-	/* Wireless setting */
+	/* Modem setting */
 	s_gsm = (NMSettingGsm *) nm_setting_gsm_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_gsm));
 	g_object_set (s_gsm,
@@ -720,7 +720,7 @@ test_example_field_lte (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
 	g_object_set (s_ip4,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
-				  //TODO: dns-search=
+	              //TODO: dns-search=
 	              NULL);
 
 	/* IP6 setting */
@@ -729,8 +729,8 @@ test_example_field_lte (void)
 
 	g_object_set (s_ip6,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
-				  NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY,
-				  //TODO: dns-search=
+	              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY,
+	              //TODO: dns-search=
 	              NULL);
 
 	nmtst_assert_connection_verifies (connection);
