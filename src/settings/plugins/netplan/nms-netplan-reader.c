@@ -1960,9 +1960,32 @@ make_modem_setting (NetplanNetDefinition *nd,
 
 	/* Make GSM only settings */
 	if (is_gsm) {
+		if (nd->modem_params.auto_config)
+			g_object_set (s_modem, NM_SETTING_GSM_AUTO_CONFIG, TRUE, NULL);
+
 		tmp = nd->modem_params.apn;
 		if (tmp)
 			g_object_set (s_modem, NM_SETTING_GSM_APN, tmp, NULL);
+
+		tmp = nd->modem_params.device_id;
+		if (tmp)
+			g_object_set (s_modem, NM_SETTING_GSM_DEVICE_ID, tmp, NULL);
+
+		tmp = nd->modem_params.network_id;
+		if (tmp)
+			g_object_set (s_modem, NM_SETTING_GSM_NETWORK_ID, tmp, NULL);
+
+		tmp = nd->modem_params.pin;
+		if (tmp)
+			g_object_set (s_modem, NM_SETTING_GSM_PIN, tmp, NULL);
+
+		tmp = nd->modem_params.sim_id;
+		if (tmp)
+			g_object_set (s_modem, NM_SETTING_GSM_SIM_ID, tmp, NULL);
+
+		tmp = nd->modem_params.sim_operator_id;
+		if (tmp)
+			g_object_set (s_modem, NM_SETTING_GSM_SIM_OPERATOR_ID, tmp, NULL);
 	}
 
 	/* Make GSM/CDMA settings */
@@ -1970,6 +1993,20 @@ make_modem_setting (NetplanNetDefinition *nd,
 	field = is_gsm ? NM_SETTING_GSM_NUMBER : NM_SETTING_CDMA_NUMBER;
 	if (tmp)
 		g_object_set (s_modem, field, tmp, NULL);
+
+	tmp = nd->modem_params.password;
+	field = is_gsm ? NM_SETTING_GSM_PASSWORD : NM_SETTING_CDMA_PASSWORD;
+	if (tmp)
+		g_object_set (s_modem, field, tmp, NULL);
+
+	tmp = nd->modem_params.username;
+	field = is_gsm ? NM_SETTING_GSM_USERNAME : NM_SETTING_CDMA_USERNAME;
+	if (tmp)
+		g_object_set (s_modem, field, tmp, NULL);
+
+	field = is_gsm ? NM_SETTING_GSM_MTU : NM_SETTING_CDMA_MTU;
+	if (nd->mtubytes > 0)
+		g_object_set (s_modem, field, nd->mtubytes, NULL);
 
 	return NM_SETTING (s_modem);
 
