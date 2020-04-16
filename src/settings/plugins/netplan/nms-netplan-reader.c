@@ -21,7 +21,7 @@
 
 #include <netplan/parse.h>
 
-#include "nm-glib-aux/nm-secret-utils.h"
+//#include "nm-glib-aux/nm-secret-utils.h"
 #include "nm-connection.h"
 #include "nm-dbus-interface.h"
 #include "nm-setting-connection.h"
@@ -30,7 +30,7 @@
 #include "nm-setting-ip6-config.h"
 #include "nm-setting-wired.h"
 #include "nm-setting-wireless.h"
-#include "nm-setting-ethtool.h"
+//#include "nm-setting-ethtool.h"
 #include "nm-setting-8021x.h"
 #include "nm-setting-bond.h"
 #include "nm-setting-team.h"
@@ -43,12 +43,16 @@
 #include "nm-setting-generic.h"
 #include "nm-core-internal.h"
 #include "nm-utils.h"
-#include "nm-libnm-core-intern/nm-ethtool-utils.h"
+//#include "nm-libnm-core-intern/nm-ethtool-utils.h"
 
 #include "platform/nm-platform.h"
 #include "NetworkManagerUtils.h"
 
 #include "nms-netplan-utils.h"
+
+#define NM_UTILS_ERROR_SETTING_MISSING NM_UTILS_ERROR_UNKNOWN
+#define NM_MATCH_SPEC_MAC_TAG                    "mac:"
+#define NM_MATCH_SPEC_INTERFACE_NAME_TAG         "interface-name:"
 
 /*****************************************************************************/
 
@@ -633,6 +637,8 @@ make_user_setting (NetplanNetDefinition *nd)
 static NMSetting *
 make_match_setting (NetplanNetDefinition *nd)
 {
+	return NULL;
+	/* Disabled for NM 1.10
 	NMSettingMatch *s_match = NULL;
 	const char *v;
 
@@ -645,6 +651,7 @@ make_match_setting (NetplanNetDefinition *nd)
 	nm_setting_match_add_interface_name (s_match, v);
 
 	return (NMSetting *) s_match;
+	*/
 }
 
 #if 0  /* TODO: proxy support */
@@ -1960,8 +1967,10 @@ make_modem_setting (NetplanNetDefinition *nd,
 
 	/* Make GSM only settings */
 	if (is_gsm) {
+		/* Disabled: Not available in NetworkManager 1.10
 		if (nd->modem_params.auto_config)
 			g_object_set (s_modem, NM_SETTING_GSM_AUTO_CONFIG, TRUE, NULL);
+		*/
 
 		tmp = nd->modem_params.apn;
 		if (tmp)

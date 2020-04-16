@@ -20,13 +20,13 @@
 
 #include <gio/gio.h>
 
-#include "nm-glib-aux/nm-enum-utils.h"
-#include "nm-glib-aux/nm-io-utils.h"
+//#include "nm-glib-aux/nm-enum-utils.h"
+//#include "nm-glib-aux/nm-io-utils.h"
 #include "nm-manager.h"
 #include "nm-setting-connection.h"
 #include "nm-setting-wired.h"
 #include "nm-setting-wireless.h"
-#include "nm-setting-ethtool.h"
+//#include "nm-setting-ethtool.h"
 #include "nm-setting-8021x.h"
 #include "nm-setting-proxy.h"
 #include "nm-setting-ip4-config.h"
@@ -40,10 +40,12 @@
 #include "nm-core-internal.h"
 #include "NetworkManagerUtils.h"
 #include "nm-meta-setting.h"
-#include "nm-libnm-core-intern/nm-ethtool-utils.h"
+//#include "nm-libnm-core-intern/nm-ethtool-utils.h"
 
 #include "nms-netplan-reader.h"
 #include "nms-netplan-utils.h"
+
+#define NM_ASCII_SPACES      " \n\t\r\f"
 
 /*****************************************************************************/
 
@@ -1750,12 +1752,14 @@ write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GEr
 				        "      parameters:\n%s", string->str);
 	g_string_free (string, TRUE);
 
+	/* Disabled for NM 1.10
 	if (!write_bridge_vlans ((NMSetting *) s_port,
 	                         NM_SETTING_BRIDGE_PORT_VLANS,
 	                         netplan,
 	                         "BRIDGE_PORT_VLANS",
 	                         error))
 		return FALSE;
+	*/
 
 	return TRUE;
 }
@@ -2334,6 +2338,7 @@ write_tc_setting (NMConnection *connection, GHashTable *netplan, GError **error)
 static gboolean
 write_match_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
+	/* Disable for NM 1.10
 	NMSettingMatch *s_match;
 	nm_auto_free_gstring GString *str = NULL;
 	guint i, num;
@@ -2363,6 +2368,7 @@ write_match_setting (NMConnection *connection, GOutputStream *netplan, GError **
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "        name: %s\n", str->str);
 	}
+	*/
 
 	return TRUE;
 }
@@ -2461,9 +2467,11 @@ write_ip4_setting (NMConnection *connection,
 		if (i > 0) {
 			GVariant *label;
 
+			/* Disable for NM 1.10
 			label = nm_ip_address_get_attribute (addr, NM_IP_ADDRESS_ATTRIBUTE_LABEL);
 			if (label)
 				continue;
+			*/
 		}
 		g_string_printf(address, "%s/%d",
 		                nm_ip_address_get_address (addr),
@@ -2662,9 +2670,11 @@ write_ip6_setting (NMConnection *connection,
 	g_assert (value);
 	if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_IGNORE)) {
 		return TRUE;
+	/* Disabled for NM 1.10
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_DISABLED)) {
 		// TODO: set optional flag in netplan
 		return TRUE;
+	*/
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_AUTO)) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "      dhcp6: yes\n");
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_DHCP)) {
@@ -2785,6 +2795,7 @@ static void
 write_ip_routing_rules (NMConnection *connection,
                         GOutputStream *netplan)
 {
+	/* Disabled for NM 1.10
 	//gsize idx = 0;
 	int is_ipv4;
 	GString *routing_policy;
@@ -2826,6 +2837,7 @@ write_ip_routing_rules (NMConnection *connection,
 		                       "      routing-policy:\n%s", routing_policy->str);
 
 	g_string_free (routing_policy, TRUE);
+	*/
 }
 
 static gboolean

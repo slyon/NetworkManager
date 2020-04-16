@@ -9,7 +9,8 @@
 #ifndef __NMS_NETPLAN_STORAGE_H__
 #define __NMS_NETPLAN_STORAGE_H__
 
-#include "c-list/src/c-list.h"
+//#include "c-list/src/c-list.h"
+#include "nm-utils/c-list.h"
 #include "settings/nm-settings-storage.h"
 #include "nms-netplan-utils.h"
 

@@ -291,7 +291,7 @@ nms_netplan_utils_user_key_decode (const char *name, GString *str_buffer)
 }
 
 /*****************************************************************************/
-
+#if 0
 const char *const _nm_ethtool_netplan_names[] = {
 #define ETHT_NAME(eid, ename) \
 [eid - _NM_ETHTOOL_ID_FEATURE_FIRST] = ""ename""
@@ -390,3 +390,4 @@ nms_netplan_utils_get_ethtool_by_name (const char *name)
 
 	return NULL;
 }
+#endif

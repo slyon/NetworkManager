@@ -1974,7 +1974,8 @@ src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_SOURCES = \
 	src/settings/plugins/netplan/nms-netplan-plugin.h \
 	$(NULL)
 
-src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_CPPFLAGS = $(src_cppflags_base) $(UUID_CFLAGS)
+src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_CPPFLAGS = \
+	$(src_cppflags) $(src_cppflags_base) $(UUID_CFLAGS)
 
 src_settings_plugins_netplan_libnm_settings_plugin_netplan_la_LDFLAGS = \
 	-module -avoid-version \
@@ -2005,6 +2006,8 @@ src_settings_plugins_netplan_tests_test_netplan_SOURCES = \
 src_settings_plugins_netplan_tests_test_netplan_CPPFLAGS = \
 	$(src_tests_cppflags) \
 	$(src_cppflags_base_test) \
+	-DNM_BUILD_SRCDIR=\"$(abs_srcdir)\" \
+	-DNM_BUILD_BUILDDIR=\"$(abs_builddir)\" \
 	$(UUID_CFLAGS)
 
 src_settings_plugins_netplan_tests_test_netplan_LDFLAGS = \

@@ -627,7 +627,7 @@ test_write_modem_gsm (void)
 	s_modem = (NMSettingGsm *) nm_setting_gsm_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_modem));
 	g_object_set (s_modem,
-	              NM_SETTING_GSM_AUTO_CONFIG, FALSE,
+	              //NM_SETTING_GSM_AUTO_CONFIG, FALSE, //Disabled: Not available in NM 1.10
 	              NM_SETTING_GSM_APN, "internet",
 	              NM_SETTING_GSM_DEVICE_ID, "dev-123",
 	              NM_SETTING_GSM_NETWORK_ID, "123456",

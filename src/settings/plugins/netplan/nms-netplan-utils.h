@@ -10,7 +10,7 @@
 #define _UTILS_H_
 
 #include "nm-connection.h"
-#include "nm-libnm-core-intern/nm-ethtool-utils.h"
+//#include "nm-libnm-core-intern/nm-ethtool-utils.h"
 
 typedef enum {
 	NMS_NETPLAN_STORAGE_TYPE_RUN       = 1, /* read-write, runtime only, e.g. /run */
@@ -60,7 +60,7 @@ void nms_netplan_utils_user_key_encode (const char *key, GString *str_buffer);
 gboolean nms_netplan_utils_user_key_decode (const char *name, GString *str_buffer);
 
 /*****************************************************************************/
-
+#if 0
 extern const char *const _nm_ethtool_netplan_names[_NM_ETHTOOL_ID_FEATURE_NUM];
 
 static inline const char *
@@ -74,5 +74,6 @@ nms_netplan_utils_get_ethtool_name (NMEthtoolID ethtool_id)
 }
 
 const NMEthtoolData *nms_netplan_utils_get_ethtool_by_name (const char *name);
+#endif
 
 #endif  /* _UTILS_H_ */
