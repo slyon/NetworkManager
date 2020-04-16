@@ -61,15 +61,15 @@ test_obj_base (void)
 		g_assert (cond); \
 	} G_STMT_END
 
-	STATIC_ASSERT (&g->g_type_instance              == (void *) &o->_class);
-	STATIC_ASSERT (&g->g_type_instance.g_class      == (void *) &o->_class);
+	//STATIC_ASSERT (&g->g_type_instance              == (void *) &o->_class);
+	//STATIC_ASSERT (&g->g_type_instance.g_class      == (void *) &o->_class);
 
 	STATIC_ASSERT (sizeof (o->parent.parent)        == sizeof (GTypeInstance));
 
 	STATIC_ASSERT (&c->parent                       == (void *) c);
 	STATIC_ASSERT (&c->parent.parent.g_type_class   == (void *) c);
 	STATIC_ASSERT (&c->parent.parent.g_type         == (void *) c);
-	STATIC_ASSERT (&c->parent.parent.g_type         == &k->g_type);
+	//STATIC_ASSERT (&c->parent.parent.g_type         == &k->g_type);
 
 	STATIC_ASSERT (sizeof (c->parent.parent)        == sizeof (GTypeClass));
 
