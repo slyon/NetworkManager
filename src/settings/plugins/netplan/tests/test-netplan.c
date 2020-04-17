@@ -607,7 +607,6 @@ test_wifi_wowlan_mac_randomization (void)
 	gs_unref_object NMConnection *reread = NULL;
 	NMSettingConnection *s_con;
 	NMSettingWireless *s_wireless;
-	NMSettingWirelessSecurity *s_wsec;
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 	GBytes *ssid;
@@ -636,14 +635,6 @@ test_wifi_wowlan_mac_randomization (void)
 				  NM_SETTING_WIRELESS_WAKE_ON_WLAN, NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL,
 	              NULL);
 
-	// TODO: test/implement non-encrypted open network
-	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
-	g_object_set (s_wsec,
-	              NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk",
-	              NM_SETTING_WIRELESS_SECURITY_PSK, "passw0rd",
-	              NULL);
-
 	/* IP4 setting */
 	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
@@ -668,7 +659,6 @@ test_wifi_wowlan_mac_randomization (void)
 
 	/* Verify WoWLan & MAC address randomization */
 	s_wireless = nm_connection_get_setting_wireless (reread);
-	_log_keyfile(reread);
 	g_assert_true (s_wireless);
 	g_assert_true (nm_setting_wireless_get_wake_on_wlan (s_wireless) == NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL);
 	//g_assert_true (nm_setting_wireless_get_mac_address_randomization (s_wireless) == NM_SETTING_MAC_RANDOMIZATION_ALWAYS);
