@@ -103,7 +103,7 @@ _connection_from_file (const char *filename,
 	g_assert (!out_unhandled || !*out_unhandled);
 
 	/* Clear netdefs before reading new data from file */
-	_clear_all_netdefs();
+	_clear_all_netdefs ();
 	connection = nmtst_connection_from_file (filename, network_file, test_type,
 	                                         out_unhandled ?: &unhandled_fallback, &error);
 	g_assert_no_error (error);
@@ -600,6 +600,95 @@ test_read_write_wired_dhcp_send_hostname (void)
 }
 
 static void
+test_write_wifi_band_a (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWireless *s_wifi;
+	GBytes *ssid;
+	const unsigned char ssid_data[] = { 0x54, 0x65, 0x73, 0x74, 0x20, 0x53, 0x53, 0x49, 0x44 };
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Wi-Fi Band A",
+	              NM_SETTING_CONNECTION_UUID, "eda52185-2feb-41d7-a34d-cf7ad470a590",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
+	              NULL);
+
+	/* Wifi setting */
+	s_wifi = (NMSettingWireless *) nm_setting_wireless_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wifi));
+	ssid = g_bytes_new (ssid_data, sizeof (ssid_data));
+	g_object_set (s_wifi,
+	              NM_SETTING_WIRELESS_SSID, ssid,
+	              NM_SETTING_WIRELESS_MODE, "infrastructure",
+	              NM_SETTING_WIRELESS_BAND, "a",
+	              NULL);
+	g_bytes_unref (ssid);
+
+	nmtst_assert_connection_verifies (connection);
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR,
+	                        TEST_NETPLAN_DIR"/wifi-band-a.yaml",
+	                        &testfile);
+
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
+test_write_wifi_band_bg (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWireless *s_wifi;
+	GBytes *ssid;
+	const unsigned char ssid_data[] = { 0x54, 0x65, 0x73, 0x74, 0x20, 0x53, 0x53, 0x49, 0x44 };
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Wi-Fi Band BG",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
+	              NULL);
+
+	/* Wifi setting */
+	s_wifi = (NMSettingWireless *) nm_setting_wireless_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wifi));
+	ssid = g_bytes_new (ssid_data, sizeof (ssid_data));
+	g_object_set (s_wifi,
+	              NM_SETTING_WIRELESS_SSID, ssid,
+	              NM_SETTING_WIRELESS_MODE, "infrastructure",
+	              NM_SETTING_WIRELESS_BAND, "bg",
+	              NULL);
+	g_bytes_unref (ssid);
+
+	nmtst_assert_connection_verifies (connection);
+	_writer_new_connection (connection,
+	                        TEST_SCRATCH_DIR,
+	                        &testfile);
+
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
 test_wifi_wowlan_mac_randomization (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -1022,6 +1111,8 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);
 
+	g_test_add_func (TPATH "wifi/write/band-a", test_write_wifi_band_a);
+	g_test_add_func (TPATH "wifi/write/band-bg", test_write_wifi_band_bg);
 	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
 
 	g_test_add_func (TPATH "modem/write/gsm-auto-eui64", test_write_modem_gsm_auto_eui64);

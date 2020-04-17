@@ -832,7 +832,7 @@ write_wireless_setting (NMConnection *connection,
 	GBytes *ssid;
 	const guint8 *ssid_data;
 	gsize ssid_len;
-	const char *mode; //, *bssid;
+	const char *mode, *band; //, *bssid;
 	const char *device_mac, *cloned_mac;
 	guint32 mtu, i, wowlan; //, chan;
 	gboolean adhoc = FALSE, hex_ssid = FALSE;
@@ -946,6 +946,7 @@ write_wireless_setting (NMConnection *connection,
 			        "        %s:\n", essid->str);
 	g_string_free(essid, TRUE);
 
+	/* Write WiFi mode */
 	mode = nm_setting_wireless_get_mode (s_wireless);
 	if (nm_streq (mode, NM_SETTING_WIRELESS_MODE_INFRA))
 		g_output_stream_printf (netplan, 0, NULL, NULL,
@@ -962,6 +963,23 @@ write_wireless_setting (NMConnection *connection,
 		             "Invalid mode '%s' in '%s' setting",
 		             mode, NM_SETTING_WIRELESS_SETTING_NAME);
 		return FALSE;
+	}
+
+	/* Write WiFi band, if set. */
+	band = nm_setting_wireless_get_band (s_wireless);
+	if (nm_str_not_empty (band)) {
+		if (nm_streq (band, "a"))
+			g_output_stream_printf (netplan, 0, NULL, NULL,
+			                        "          band: 5GHz\n");
+		else if (nm_streq (band, "bg"))
+			g_output_stream_printf (netplan, 0, NULL, NULL,
+			                        "          band: 2.4GHz\n");
+		else {
+			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+			            "Invalid band '%s' in '%s' setting",
+			             band, NM_SETTING_WIRELESS_SETTING_NAME);
+			return FALSE;
+		}
 	}
 
 #if 0 // TODO: implement channel, band, bssid selection in netplan
