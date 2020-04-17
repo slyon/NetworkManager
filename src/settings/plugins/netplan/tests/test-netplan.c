@@ -600,6 +600,84 @@ test_read_write_wired_dhcp_send_hostname (void)
 }
 
 static void
+test_wifi_wowlan_mac_randomization (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWireless *s_wireless;
+	NMSettingWirelessSecurity *s_wsec;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	GBytes *ssid;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "wowlan-macrandom",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
+	              NULL);
+
+	/* Wireless setting */
+	s_wireless = (NMSettingWireless *) nm_setting_wireless_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wireless));
+	ssid = g_bytes_new ("open-net", 8);
+	g_object_set (s_wireless,
+	              //NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION, NM_SETTING_MAC_RANDOMIZATION_ALWAYS, // TODO: needs to be implemented in netplan
+	              NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_INFRA,
+	              NM_SETTING_WIRELESS_SSID, ssid,
+				  NM_SETTING_WIRELESS_WAKE_ON_WLAN, NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL,
+	              NULL);
+
+	// TODO: test/implement non-encrypted open network
+	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
+	g_object_set (s_wsec,
+	              NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk",
+	              NM_SETTING_WIRELESS_SECURITY_PSK, "passw0rd",
+	              NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection,
+	                        TEST_SCRATCH_DIR,
+	                        &testfile);
+
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	/* Verify WoWLan & MAC address randomization */
+	s_wireless = nm_connection_get_setting_wireless (reread);
+	_log_keyfile(reread);
+	g_assert_true (s_wireless);
+	g_assert_true (nm_setting_wireless_get_wake_on_wlan (s_wireless) == NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL);
+	//g_assert_true (nm_setting_wireless_get_mac_address_randomization (s_wireless) == NM_SETTING_MAC_RANDOMIZATION_ALWAYS);
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
+static void
 test_write_modem_gsm_auto_eui64 (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -953,6 +1031,8 @@ int main (int argc, char **argv)
 
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);
+
+	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
 
 	g_test_add_func (TPATH "modem/write/gsm-auto-eui64", test_write_modem_gsm_auto_eui64);
 	g_test_add_func (TPATH "modem/write/gsm", test_write_modem_gsm);
