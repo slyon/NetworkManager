@@ -600,6 +600,69 @@ test_read_write_wired_dhcp_send_hostname (void)
 }
 
 static void
+test_write_modem_gsm_auto_eui64 (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingGsm *s_modem;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIP6Config *s_ip6;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "gsm-auto",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_GSM_SETTING_NAME,
+				  NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
+	              NULL);
+
+	/* Modem setting */
+	s_modem = (NMSettingGsm *) nm_setting_gsm_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_modem));
+	g_object_set (s_modem, NM_SETTING_GSM_AUTO_CONFIG, TRUE, NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIP6Config *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64,
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection, TEST_SCRATCH_DIR, &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	/* Verify auto-config was written & re-read correctly. */
+	s_modem = nm_connection_get_setting_gsm (reread);
+	g_assert_true (s_modem);
+	g_assert_true (nm_setting_gsm_get_auto_config (s_modem));
+
+	/* Verify eui64 was written & re-read correctly. */
+	s_ip6 = (NMSettingIP6Config *) nm_connection_get_setting_ip6_config (reread);
+	g_assert_true (s_ip6);
+	g_assert_true (nm_setting_ip6_config_get_addr_gen_mode (s_ip6) == NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64);
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+}
+
+static void
 test_write_modem_gsm (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -652,7 +715,7 @@ test_write_modem_gsm (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
 	g_object_set (s_ip6,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
-	              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64,
+	              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY,
 	              NULL);
 
 	nmtst_assert_connection_verifies (connection);
@@ -689,7 +752,7 @@ test_write_modem_cdma (void)
 	              NULL);
 
 	/* Modem setting */
-	s_modem = (NMSettingGsm *) nm_setting_cdma_new ();
+	s_modem = (NMSettingCdma *) nm_setting_cdma_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_modem));
 	g_object_set (s_modem,
 	              NM_SETTING_GSM_NUMBER, "*99#",
@@ -891,6 +954,7 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);
 
+	g_test_add_func (TPATH "modem/write/gsm-auto-eui64", test_write_modem_gsm_auto_eui64);
 	g_test_add_func (TPATH "modem/write/gsm", test_write_modem_gsm);
 	g_test_add_func (TPATH "modem/write/cdma", test_write_modem_cdma);
 
