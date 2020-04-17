@@ -8,6 +8,7 @@ network:
           mode: infrastructure
           band: 5GHz
           channel: 7
+          bssid: de:ad:be:ef:ca:fe
       dhcp4: yes
       dhcp6: yes
       ipv6-address-generation: stable-privacy
