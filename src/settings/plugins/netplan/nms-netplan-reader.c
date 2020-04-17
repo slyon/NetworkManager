@@ -1446,6 +1446,7 @@ read_wep_keys (NetplanNetDefinition *nd,
 }
 #endif
 
+#if 0 /* TODO: Implement WEP in netplan */
 static NMSetting *
 make_wep_setting (NetplanNetDefinition *nd,
                   const char *file,
@@ -1479,6 +1480,7 @@ make_wep_setting (NetplanNetDefinition *nd,
 
 	return NM_SETTING (g_steal_pointer (&s_wsec));
 }
+#endif
 
 static gboolean
 fill_wpa_ciphers (NetplanNetDefinition *nd,
@@ -1742,19 +1744,23 @@ make_wireless_security_setting (NetplanNetDefinition *nd,
 	}
 #endif
 
+	/* Handle key-management = 'psk', 'eap' or '802.1x' */
 	wsec = make_wpa_setting (nd, file, ssid, adhoc, s_8021x, error);
 	if (wsec)
 		return wsec;
 	else if (*error)
 		return NULL;
 
+	/* XXX: WEP is not supported with netplan.
+	 *   Only 'none', 'psk', 'eap' and '802.1x' as handled by make_wpa_setting().
 	wsec = make_wep_setting (nd, file, error);
 	if (wsec)
 		return wsec;
 	else if (*error)
 		return NULL;
+	*/
 
-	return NULL; /* unencrypted */
+	return NULL; /* unencrypted, open network */
 }
 
 static NMSetting *
