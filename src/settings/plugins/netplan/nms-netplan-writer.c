@@ -834,7 +834,7 @@ write_wireless_setting (NMConnection *connection,
 	gsize ssid_len;
 	const char *mode, *band; //, *bssid;
 	const char *device_mac, *cloned_mac;
-	guint32 mtu, i, wowlan; //, chan;
+	guint32 mtu, i, wowlan, chan;
 	gboolean adhoc = FALSE, hex_ssid = FALSE;
 	//const char *const*macaddr_blacklist;
 	GString *essid;
@@ -980,19 +980,16 @@ write_wireless_setting (NMConnection *connection,
 			             band, NM_SETTING_WIRELESS_SETTING_NAME);
 			return FALSE;
 		}
+
+		/* Write channel. Can only be set if band is known. */
+		chan = nm_setting_wireless_get_channel (s_wireless);
+		if (chan) {
+			g_output_stream_printf (netplan, 0, NULL, NULL,
+			                        "          channel: %u\n", chan);
+		}
 	}
 
-#if 0 // TODO: implement channel, band, bssid selection in netplan
-	svUnsetValue (netplan, "CHANNEL");
-	svUnsetValue (netplan, "BAND");
-	chan = nm_setting_wireless_get_channel (s_wireless);
-	if (chan) {
-		svSetValueInt64 (netplan, "CHANNEL", chan);
-	} else {
-		/* Band only set if channel is not, since channel implies band */
-		svSetValueStr (netplan, "BAND", nm_setting_wireless_get_band (s_wireless));
-	}
-
+#if 0 // TODO: implement bssid selection in netplan
 	bssid = nm_setting_wireless_get_bssid (s_wireless);
 	svSetValueStr (netplan, "BSSID", bssid);
 #endif

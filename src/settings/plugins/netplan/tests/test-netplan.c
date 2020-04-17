@@ -631,6 +631,7 @@ test_write_wifi_band_a (void)
 	              NM_SETTING_WIRELESS_SSID, ssid,
 	              NM_SETTING_WIRELESS_MODE, "infrastructure",
 	              NM_SETTING_WIRELESS_BAND, "a",
+	              NM_SETTING_WIRELESS_CHANNEL, 7,
 	              NULL);
 	g_bytes_unref (ssid);
 
@@ -676,6 +677,7 @@ test_write_wifi_band_bg (void)
 	              NM_SETTING_WIRELESS_SSID, ssid,
 	              NM_SETTING_WIRELESS_MODE, "infrastructure",
 	              NM_SETTING_WIRELESS_BAND, "bg",
+	              NM_SETTING_WIRELESS_CHANNEL, 11,
 	              NULL);
 	g_bytes_unref (ssid);
 
