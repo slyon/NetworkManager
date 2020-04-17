@@ -1821,6 +1821,7 @@ make_wireless_setting (NetplanNetDefinition *nd,
 
 		g_object_set (s_wireless, NM_SETTING_WIRELESS_SSID, bytes, NULL);
 
+		/* Read WiFi mode */
 		if (ap->mode == NETPLAN_WIFI_MODE_INFRASTRUCTURE) {
 			mode = "infrastructure";
 		} else if (ap->mode == NETPLAN_WIFI_MODE_ADHOC) {
@@ -1835,7 +1836,11 @@ make_wireless_setting (NetplanNetDefinition *nd,
 		}
 		g_object_set (s_wireless, NM_SETTING_WIRELESS_MODE, mode, NULL);
 
-		/* TODO: Handle BSSID ("MAC" for picking a specific AP) */
+		/* Read BSSID ("MAC" for picking a specific AP) */
+		if (ap->bssid)
+			g_object_set (s_wireless, NM_SETTING_WIRELESS_BSSID, ap->bssid, NULL);
+
+		/* Read WiFi band and corresponding channel */
 		if (ap->band == NETPLAN_WIFI_BAND_DEFAULT)
 			band = NULL;
 		else if (ap->band == NETPLAN_WIFI_BAND_5) {

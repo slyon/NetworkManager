@@ -632,6 +632,7 @@ test_write_wifi_band_a (void)
 	              NM_SETTING_WIRELESS_MODE, "infrastructure",
 	              NM_SETTING_WIRELESS_BAND, "a",
 	              NM_SETTING_WIRELESS_CHANNEL, 7,
+	              NM_SETTING_WIRELESS_BSSID, "de:ad:be:ef:ca:fe",
 	              NULL);
 	g_bytes_unref (ssid);
 

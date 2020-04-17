@@ -832,7 +832,7 @@ write_wireless_setting (NMConnection *connection,
 	GBytes *ssid;
 	const guint8 *ssid_data;
 	gsize ssid_len;
-	const char *mode, *band; //, *bssid;
+	const char *mode, *band, *bssid;
 	const char *device_mac, *cloned_mac;
 	guint32 mtu, i, wowlan, chan;
 	gboolean adhoc = FALSE, hex_ssid = FALSE;
@@ -989,10 +989,12 @@ write_wireless_setting (NMConnection *connection,
 		}
 	}
 
-#if 0 // TODO: implement bssid selection in netplan
+	/* Write BSSID, if set. */
 	bssid = nm_setting_wireless_get_bssid (s_wireless);
-	svSetValueStr (netplan, "BSSID", bssid);
-#endif
+	if (nm_str_not_empty (bssid)) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "          bssid: %s\n", bssid);
+	}
 
 	if (nm_connection_get_setting_wireless_security (connection)) {
 		if (!write_wireless_security_setting (connection, netplan, NULL, adhoc, error))
