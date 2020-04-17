@@ -19,6 +19,7 @@
 #include <stdio.h>
 
 #include <gio/gio.h>
+#include <netplan/parse.h>
 
 #include "nm-glib-aux/nm-enum-utils.h"
 #include "nm-glib-aux/nm-io-utils.h"
@@ -802,6 +803,26 @@ write_wireless_security_setting (NMConnection *connection,
 	return TRUE;
 }
 
+static gchar*
+wowlan_flags_str(NMSettingWirelessWakeOnWLan flags, GError **error)
+{
+	GString *out = g_string_sized_new (200);
+	for (unsigned i = 0; NETPLAN_WIFI_WOWLAN_TYPES[i].name != NULL; ++i) {
+		if (flags & NETPLAN_WIFI_WOWLAN_TYPES[i].flag)
+			g_string_append_printf (out, "%s, ", NETPLAN_WIFI_WOWLAN_TYPES[i].name);
+	}
+	if (out->len == 0) {
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+		             "Invalid WakeOnWLan flags: '0x%x' not supported by netplan.", flags);
+		return g_string_free (out, TRUE);
+	}
+
+	// cut last ", "
+	out = g_string_truncate (out, out->len-2);
+	// returned gchar* must be freed by caller
+	return g_string_free (out, FALSE);
+}
+
 static gboolean
 write_wireless_setting (NMConnection *connection,
                         GOutputStream *netplan,
@@ -813,7 +834,7 @@ write_wireless_setting (NMConnection *connection,
 	gsize ssid_len;
 	const char *mode; //, *bssid;
 	const char *device_mac, *cloned_mac;
-	guint32 mtu, i; //, chan;
+	guint32 mtu, i, wowlan; //, chan;
 	gboolean adhoc = FALSE, hex_ssid = FALSE;
 	//const char *const*macaddr_blacklist;
 	GString *essid;
@@ -858,6 +879,16 @@ write_wireless_setting (NMConnection *connection,
 	if (mtu != 0)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 				        "      mtu: %d\n", mtu);
+
+	wowlan = nm_setting_wireless_get_wake_on_wlan (s_wireless);
+	if (wowlan != NM_SETTING_WIRELESS_WAKE_ON_WLAN_DEFAULT) {
+		gchar *tmp = wowlan_flags_str(wowlan, error);
+		if (!tmp)
+			return FALSE;
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "      wakeonwlan: [%s]\n", tmp);
+		g_free (tmp);
+	}
 
 	ssid = nm_setting_wireless_get_ssid (s_wireless);
 	if (!ssid) {

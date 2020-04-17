@@ -1782,6 +1782,9 @@ make_wireless_setting (NetplanNetDefinition *nd,
 	if (value)
 		g_object_set (s_wireless, NM_SETTING_WIRELESS_MAC_ADDRESS, value, NULL);
 
+	if (nd->wowlan > NM_SETTING_WIRELESS_WAKE_ON_WLAN_NONE)
+		g_object_set (s_wireless, NM_SETTING_WIRELESS_WAKE_ON_WLAN, nd->wowlan, NULL);
+
 	g_hash_table_iter_init (&iter, nd->access_points);
 	g_hash_table_iter_next (&iter, &key, &value);
 	if (value) {
