@@ -1,0 +1,16 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  wifis:
+    wlan0:
+      access-points:
+        Test SSID:
+          mode: infrastructure
+          band: 5GHz
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: Test Write Wi-Fi Band A
+        uuid: eda52185-2feb-41d7-a34d-cf7ad470a590
+        device: wlan0

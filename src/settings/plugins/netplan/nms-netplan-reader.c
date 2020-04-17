@@ -1799,7 +1799,7 @@ make_wireless_setting (NetplanNetDefinition *nd,
 		gsize ssid_len = 0;
 		gsize value_len = strlen (ap->ssid);
 		//char *lcase;
-		const char *mode = NULL;
+		const char *mode, *band = NULL;
 
 		if (   value_len > 2
 		    && (value_len % 2) == 0
@@ -1837,7 +1837,19 @@ make_wireless_setting (NetplanNetDefinition *nd,
 
 		/* TODO: Handle BSSID ("MAC" for picking a specific AP) */
 		/* TODO: Handle wireless channel (needs netplan work) */
-		/* TODO: Handle wireless band (needs netplan work) */
+		if (ap->band == NETPLAN_WIFI_BAND_DEFAULT)
+			band = NULL;
+		else if (ap->band == NETPLAN_WIFI_BAND_5)
+			band = "a";
+		else if (ap->band == NETPLAN_WIFI_BAND_24)
+			band = "bg";
+		else {
+			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
+			             "Invalid band '%d' (not '5GHz' or '2.4GHz')",
+			             ap->band);
+			goto error;
+		}
+		g_object_set (s_wireless, NM_SETTING_WIRELESS_BAND, band, NULL);
 	}
 
 	if (nd->mtubytes > 0)
