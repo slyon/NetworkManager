@@ -1155,6 +1155,15 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 		route_table = 0;
 	}
 #endif  /* ipv6 methods and settings */
+
+	/* Skip if we have neither static nor dynamic IP6 config */
+	if (!nd->ip6_addresses && !nd->dhcp6) {
+		g_object_set (s_ip6,
+		              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
+		              NULL);
+		return NM_SETTING (g_steal_pointer (&s_ip6));
+	}
+
 	if (nd->ip6_addresses)
 		method = NM_SETTING_IP6_CONFIG_METHOD_MANUAL;
 
