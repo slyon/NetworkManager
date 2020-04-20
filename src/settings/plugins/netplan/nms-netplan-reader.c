@@ -710,6 +710,7 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	gs_free char *gateway = NULL;
 	GError *local = NULL;
 	char *method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
+	NMIPRoute *route = NULL;
 
 	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
 
@@ -934,7 +935,25 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	              NM_SETTING_IP_CONFIG_DNS_PRIORITY,
 	              priority,
 	              NULL);
+#endif
 
+	if (nd->routes != NULL) {
+		for (unsigned i = 0; i < nd->routes->len; ++i) {
+			NetplanIPRoute *r = g_array_index(nd->routes, NetplanIPRoute*, i);
+			if (r->family != AF_INET)
+				continue;
+			gchar** ipmask = g_strsplit (r->to, "/", 2);
+			route = nm_ip_route_new (r->family, ipmask[0], atoi(ipmask[1]), r->via, r->metric, &local);
+			// TODO: implement route attributes
+			//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (3455));
+			//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean(r.onlink));
+			g_assert_no_error (local);
+			nm_setting_ip_config_add_route (s_ip4, route);
+			nm_ip_route_unref (route);
+		}
+	}
+
+#if 0
 	/* Static routes  - route-<name> file */
 	route_path = utils_get_route_path (svFileGetName (netplan));
 

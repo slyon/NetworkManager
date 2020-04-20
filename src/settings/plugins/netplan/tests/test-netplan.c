@@ -556,6 +556,130 @@ test_write_wired_static (void)
 }
 
 static void
+test_write_wired_static_routes (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	nmtst_auto_unlinkfile char *routefile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	NMIPAddress *addr;
+	NMIPRoute *route;
+	GError *error = NULL;
+	gboolean reread_same = FALSE;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Wired Static Routes",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_AUTOCONNECT, TRUE,
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRED_SETTING_NAME,
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	g_object_set (s_wired,
+	              NM_SETTING_WIRED_MAC_ADDRESS, "31:33:33:37:be:cd",
+	              NM_SETTING_WIRED_MTU, (guint32) 1492,
+	              NULL);
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+
+	g_object_set (s_ip4,
+	              // TODO: implement NM_SETTING_IP4_CONFIG_METHOD_IGNORE
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
+	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
+	              //NM_SETTING_IP_CONFIG_DAD_TIMEOUT, 400,
+	              NULL);
+
+	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip4, addr);
+	nm_ip_address_unref (addr);
+
+	addr = nm_ip_address_new (AF_INET, "1.1.1.5", 24, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip4, addr);
+	nm_ip_address_unref (addr);
+
+	/* Write out routes */
+	route = nm_ip_route_new (AF_INET, "1.2.3.0", 24, "222.173.190.239", 0, &error);
+	/* XXX: Needs to be implemented in netplan */
+	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (3455));
+	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean (TRUE));
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_route (s_ip4, route);
+	nm_ip_route_unref (route);
+
+	route = nm_ip_route_new (AF_INET, "3.2.1.0", 24, "202.254.186.190", 77, &error);
+	/* XXX: Needs to be implemented in netplan */
+	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (30000));
+	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean (FALSE));
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_route (s_ip4, route);
+	nm_ip_route_unref (route);
+
+	nm_setting_ip_config_add_dns (s_ip4, "4.2.2.1");
+	nm_setting_ip_config_add_dns (s_ip4, "4.2.2.2");
+
+	nm_setting_ip_config_add_dns_search (s_ip4, "foobar.com");
+	nm_setting_ip_config_add_dns_search (s_ip4, "lab.foobar.com");
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+	_writer_new_connection (connection,
+	                        TEST_SCRATCH_DIR,
+	                        &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+	/* XXX: improve test
+	_writer_new_connection_reread (connection,
+	                               TEST_SCRATCH_DIR,
+	                               &testfile,
+	                               NULL,//TEST_IFCFG_DIR"/ifcfg-Test_Write_Wired_Static_Routes.cexpected",
+	                               &reread,
+	                               &reread_same);
+								   */
+	/* ifcfg does not support setting onlink=0. It gets lost during write+re-read.
+	 * Assert that it's missing, and patch it to check whether the rest of the
+	 * connection equals. */
+	/*
+	g_assert (!reread_same);
+	nmtst_assert_connection_verifies_without_normalization (reread);
+	s_ip4 = nm_connection_get_setting_ip4_config (reread);
+	g_assert (s_ip4);
+	g_assert_cmpint (nm_setting_ip_config_get_num_routes (s_ip4), ==, 2);
+	route = nm_setting_ip_config_get_route (s_ip4, 1);
+	g_assert (route);
+	g_assert (!nm_ip_route_get_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK));
+	nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean (FALSE));
+	*/
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+
+	//routefile = utils_get_route_path (testfile);
+}
+
+
+static void
 test_read_write_wired_dhcp_send_hostname (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -1109,6 +1233,7 @@ int main (int argc, char **argv)
 
 	g_test_add_func (TPATH "wired/write/basic", test_write_wired_basic);
 	g_test_add_func (TPATH "wired/write/static", test_write_wired_static);
+	g_test_add_func (TPATH "wired/write/routes", test_write_wired_static_routes);
 
 	g_test_add_func (TPATH "wifi/write/band-a", test_write_wifi_band_a);
 	g_test_add_func (TPATH "wifi/write/band-bg", test_write_wifi_band_bg);
