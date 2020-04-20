@@ -1,6 +1,0 @@
-network:
-  version: 2
-  renderer: NetworkManager
-  ethernets:
-    wired-default:
-      renderer: NetworkManager
