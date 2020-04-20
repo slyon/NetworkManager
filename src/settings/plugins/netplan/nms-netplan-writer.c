@@ -2110,7 +2110,6 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 #endif
 }
 
-#if 0 /* goes with routes!!! */
 static char *
 get_route_attributes_string (NMIPRoute *route, int family)
 {
@@ -2180,9 +2179,7 @@ get_route_attributes_string (NMIPRoute *route, int family)
 
 	return g_string_free (str, FALSE);
 }
-#endif
 
-#if 0 /* temp disable : routes: */
 static GString *
 write_route_settings (NMSettingIPConfig *s_ip)
 {
@@ -2209,13 +2206,13 @@ write_route_settings (NMSettingIPConfig *s_ip)
 		metric = nm_ip_route_get_metric (route);
 		options = get_route_attributes_string (route, addr_family);
 
-		g_string_append_printf (contents, "      - to: %s/%u\n",
+		g_string_append_printf (contents, "        - to: %s/%u\n",
 		                        nm_ip_route_get_dest (route),
 		                        nm_ip_route_get_prefix (route));
 		if (next_hop)
-			g_string_append_printf (contents, "        via: %s\n", next_hop);
+			g_string_append_printf (contents, "          via: %s\n", next_hop);
 		if (metric >= 0)
-			g_string_append_printf (contents, "        metric: %u\n", (guint) metric);
+			g_string_append_printf (contents, "          metric: %u\n", (guint) metric);
 #if 0  // TODO: implementing route options
 		if (options) {
 			g_string_append_c (contents, ' ');
@@ -2226,7 +2223,6 @@ write_route_settings (NMSettingIPConfig *s_ip)
 
 	return contents;
 }
-#endif
 
 #if 0  // TODO: implement proxy support.
 static gboolean
@@ -2586,6 +2582,14 @@ write_ip4_setting (NMConnection *connection,
 	                      timeout != 0,
 	                      timeout);
 #endif
+
+	// TODO: write combined IP4/IP6 routes, by storing them in a hashtable before
+	GString *route_str = write_route_settings (s_ip4);
+	if (route_str) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+	                        "      routes:\n%s", route_str->str);
+		g_string_free (route_str, TRUE);
+	}
 
 #if 0  // TODO: Implement route settings here for ipv4
 	svSetValueBoolean (netplan, "IPV4_FAILURE_FATAL", !nm_setting_ip_config_get_may_fail (s_ip4));
