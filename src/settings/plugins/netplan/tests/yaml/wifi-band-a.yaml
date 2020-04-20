@@ -2,7 +2,7 @@ network:
   version: 2
   renderer: NetworkManager
   wifis:
-    wlan0:
+    NM-eda52185-2feb-41d7-a34d-cf7ad470a590:
       access-points:
         Test SSID:
           mode: infrastructure
@@ -15,4 +15,3 @@ network:
       networkmanager:
         name: Test Write Wi-Fi Band A
         uuid: eda52185-2feb-41d7-a34d-cf7ad470a590
-        device: wlan0

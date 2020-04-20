@@ -1925,8 +1925,10 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 		                        "        stable-id: %s\n", tmp);
 	
 	// TODO: MOVE to header to identify the device / connection it is under
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        device: %s\n", nm_setting_connection_get_interface_name (s_con));
+	tmp = nm_setting_connection_get_interface_name (s_con);
+	if (tmp)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "        device: %s\n", tmp);
 
 	// TODO: hook up autoconnect ???
 	//g_output_stream_printf (netplan, "ONBOOT", nm_setting_connection_get_autoconnect (s_con));
@@ -2884,7 +2886,8 @@ do_write_construct (NMConnection *connection,
 	NMSettingConnection *s_con;
 	//NMSettingIPConfig *s_ip4;
 	//NMSettingIPConfig *s_ip6;
-	const gchar *type = NULL;
+	const gchar *type = NULL, *id = NULL;
+	GString *id_str = NULL;
 	GArray *addresses, *nameservers, *searches;
 	GHashTable *dhcp4_overrides, *dhcp6_overrides;
 
@@ -2912,7 +2915,14 @@ do_write_construct (NMConnection *connection,
 	g_output_stream_printf (netplan, 0, NULL, NULL,
 			        "network:\n  version: 2\n  renderer: NetworkManager\n");
 
-	// XXX: How to handle unknown iface name in netplan?
+	id = nm_connection_get_interface_name (connection);
+	/* Fallback to "NM-<UUID>" based naming, if ifname is not set. */
+	if (!nm_str_not_empty (id)) {
+		id_str = g_string_new (nm_connection_get_uuid (connection));
+		id_str = g_string_prepend(id_str, "NM-");
+		id = g_string_free(id_str, FALSE);
+	}
+
 	if (!strcmp (type, NM_SETTING_WIRED_SETTING_NAME)) {
 		// TODO: Implement PPPoE support.
 		if (nm_connection_get_setting_pppoe (connection)) {
@@ -2923,54 +2933,46 @@ do_write_construct (NMConnection *connection,
 		}
 
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  ethernets:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  ethernets:\n    %s:\n", id);
 		if (!write_wired_setting (connection, netplan, error))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_VLAN_SETTING_NAME)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  vlans:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  vlans:\n    %s:\n", id);
 		if (!write_vlan_setting (connection, netplan, error))
 			return FALSE;
 	} else if (NM_IN_STRSET (type, NM_SETTING_GSM_SETTING_NAME, NM_SETTING_CDMA_SETTING_NAME)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  modems:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  modems:\n    %s:\n", id);
 		if (!write_modem_setting (connection, netplan, error, type))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_WIRELESS_SETTING_NAME)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  wifis:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  wifis:\n    %s:\n", id);
 		if (!write_wireless_setting (connection, netplan, error))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_INFINIBAND_SETTING_NAME)) {
 #if 0
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  ethernets:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  ethernets:\n    %s:\n", id);
 		if (!write_infiniband_setting (connection, netplan, error))
 #endif
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_BOND_SETTING_NAME)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  bonds:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  bonds:\n    %s:\n", id);
 		if (!write_bond_setting (connection, netplan, error))
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_TEAM_SETTING_NAME)) {
 #if 0
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  ethernets:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  ethernets:\n    %s:\n", id);
 		if (!write_team_setting (connection, netplan, error))
 #endif
 			return FALSE;
 	} else if (!strcmp (type, NM_SETTING_BRIDGE_SETTING_NAME)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "  bridges:\n    %s:\n",
-		                        nm_connection_get_interface_name (connection));
+		                        "  bridges:\n    %s:\n", id);
 		if (!write_bridge_setting (connection, netplan, error))
 			return FALSE;
 	} else {

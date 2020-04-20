@@ -620,7 +620,6 @@ test_write_wifi_band_a (void)
 	              NM_SETTING_CONNECTION_ID, "Test Write Wi-Fi Band A",
 	              NM_SETTING_CONNECTION_UUID, "eda52185-2feb-41d7-a34d-cf7ad470a590",
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
-	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
 	              NULL);
 
 	/* Wifi setting */
@@ -667,7 +666,6 @@ test_write_wifi_band_bg (void)
 	              NM_SETTING_CONNECTION_ID, "Test Write Wi-Fi Band BG",
 	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
-	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
 	              NULL);
 
 	/* Wifi setting */
@@ -713,7 +711,6 @@ test_wifi_wowlan_mac_randomization (void)
 	              NM_SETTING_CONNECTION_ID, "wowlan-macrandom",
 	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
-	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
 	              NULL);
 
 	/* Wireless setting */
@@ -969,7 +966,6 @@ test_example_field_wifi (void)
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
 	              //NM_SETTING_CONNECTION_PERMISSIONS, "",
 	              //NM_SETTING_CONNECTION_SECONDARIES, "",
-	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0", // XXX: how to handle unknown iface in netplan?
 	              NULL);
 
 	/* Wireless setting */
