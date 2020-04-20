@@ -272,8 +272,9 @@ make_connection_setting (const char *file,
 	              NULL);
 
 	/* Get iface/device name from NM backend settings. If missing, fall back to netdef ID. */
-	v = nd->backend_settings.nm.device ? nd->backend_settings.nm.device : nd->id;
-	g_assert_nonnull (nm_str_not_empty(v));
+	v = nd->backend_settings.nm.device;
+	if (!v && nm_utils_is_valid_iface_name (nd->id, NULL))
+		v = nd->id;
 	if (v) {
 		GError *error = NULL;
 
