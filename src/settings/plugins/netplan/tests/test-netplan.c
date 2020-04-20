@@ -307,10 +307,8 @@ test_read_basic_dhcp (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 
-	// XXX: is wired-default.yaml still needed?
 	connection = _connection_from_file (TEST_NETPLAN_DIR"/basic-dhcp.yaml",
-	                                    TEST_NETPLAN_DIR"/wired-default.yaml",
-										NULL, NULL);
+	                                    NULL, NULL, NULL);
 
 	/* ===== CONNECTION SETTING ===== */
 	s_con = nm_connection_get_setting_connection (connection);
@@ -599,7 +597,6 @@ test_write_wired_static_routes (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
 
 	g_object_set (s_ip4,
-	              // TODO: implement NM_SETTING_IP4_CONFIG_METHOD_IGNORE
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
 	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
 	              //NM_SETTING_IP_CONFIG_DAD_TIMEOUT, 400,
@@ -643,7 +640,7 @@ test_write_wired_static_routes (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
 
 	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
 	              NULL);
 
 	nmtst_assert_connection_verifies (connection);
