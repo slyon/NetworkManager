@@ -2129,6 +2129,17 @@ make_wired_setting (NetplanNetDefinition *nd,
 	if (nd->mtubytes > 0)
 		g_object_set (s_wired, NM_SETTING_WIRED_MTU, nd->mtubytes, NULL);
 
+	/* TODO: Implement all the different wake-on-lan flags in netplan.
+	 *   Right now we can only enable the default (0x1) or ignore. */
+	if (nd->wake_on_lan)
+		g_object_set (s_wired,
+		              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_DEFAULT,
+		              NULL);
+	else
+		g_object_set (s_wired,
+		              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE,
+		              NULL);
+
 	value = nd->match.mac;
 	if (value)
 		g_object_set (s_wired, NM_SETTING_WIRED_MAC_ADDRESS, value, NULL);

@@ -1,0 +1,14 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eth42:
+      match: { macaddress: DE:AD:BE:EF:CA:FE }
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: write-test
+        uuid: dc6604ee-8924-4439-b9a3-ffda82e53427
+        stable-id: stable-id-test
+        device: eth42
