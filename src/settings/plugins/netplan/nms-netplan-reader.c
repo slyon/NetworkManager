@@ -1958,13 +1958,13 @@ make_modem_setting (NetplanNetDefinition *nd,
                     GError **error,
                     gboolean is_gsm)
 {
-	void *s_modem;
+	NMSetting *s_modem;
 	const char *tmp;
 	const char *field;
 
-	s_modem = is_gsm ?
-	          NM_SETTING_GSM (nm_setting_gsm_new ()) :
-	          NM_SETTING_CDMA (nm_setting_cdma_new());
+	s_modem = is_gsm
+	          ? NM_SETTING (nm_setting_gsm_new ())
+	          : NM_SETTING (nm_setting_cdma_new());
 
 	/* Make GSM only settings */
 	if (is_gsm) {
