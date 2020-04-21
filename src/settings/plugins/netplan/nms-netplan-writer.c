@@ -1159,7 +1159,7 @@ write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **
 {
 	NMSettingWired *s_wired;
 	//const char *const*s390_subchannels;
-	guint32 mtu; // i, num_opts;
+	guint32 mtu, wolan; // i, num_opts;
 	//const char *const*macaddr_blacklist;
 	const char *mac;
 
@@ -1204,9 +1204,10 @@ write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **
 				        "      mtu: %d\n", mtu);
 
 	/* TODO: Implement all the different WoLAN flags in netplan. */
-	if (nm_setting_wired_get_wake_on_lan (s_wired) != NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE) {
+	wolan = nm_setting_wired_get_wake_on_lan (s_wired);
+	if (wolan > NM_SETTING_WIRED_WAKE_ON_LAN_NONE &&
+	    wolan < NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE)
 		g_output_stream_printf (netplan, 0, NULL, NULL, "      wakeonlan: true\n");
-	}
 
 #if 0 // TODO: implement s390 subchannels 
 	s390_subchannels = nm_setting_wired_get_s390_subchannels (s_wired);
@@ -2890,7 +2891,6 @@ write_ip_routing_rules (NMConnection *connection,
 				g_string_append_printf (routing_policy, "          mark: %d\n", tmp);
 
 			tmp = nm_ip_routing_rule_get_tos (rule);
-			printf("TOS %d\n", tmp);
 			if (tmp)
 				g_string_append_printf (routing_policy, "          type-of-service: %d\n", tmp);
 

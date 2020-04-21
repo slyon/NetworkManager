@@ -2126,27 +2126,27 @@ make_wired_setting (NetplanNetDefinition *nd,
 
 	s_wired = NM_SETTING_WIRED (nm_setting_wired_new ());
 
-	if (nd->mtubytes > 0)
-		g_object_set (s_wired, NM_SETTING_WIRED_MTU, nd->mtubytes, NULL);
+	/* Only for physical devices */
+	if (nd->type < NETPLAN_DEF_TYPE_VIRTUAL) {
+		if (nd->mtubytes > 0)
+			g_object_set (s_wired, NM_SETTING_WIRED_MTU, nd->mtubytes, NULL);
 
-	/* TODO: Implement all the different wake-on-lan flags in netplan.
-	 *   Right now we can only enable the default (0x1) or ignore. */
-	if (nd->wake_on_lan)
-		g_object_set (s_wired,
-		              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_DEFAULT,
-		              NULL);
-	else
-		g_object_set (s_wired,
-		              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE,
-		              NULL);
+		value = nd->match.mac;
+		if (value)
+			g_object_set (s_wired, NM_SETTING_WIRED_MAC_ADDRESS, value, NULL);
 
-	value = nd->match.mac;
-	if (value)
-		g_object_set (s_wired, NM_SETTING_WIRED_MAC_ADDRESS, value, NULL);
+		value = nd->set_mac;
+		if (value)
+			g_object_set (s_wired, NM_SETTING_WIRED_CLONED_MAC_ADDRESS, value, NULL);
 
-	value = nd->set_mac;
-	if (value)
-		g_object_set (s_wired, NM_SETTING_WIRED_CLONED_MAC_ADDRESS, value, NULL);
+		/* TODO: Implement all the different wake-on-lan flags in netplan.
+		 *   Right now we can only enable the DEFAULT (0x1) or NONE (0x0). */
+		if (!nd->wake_on_lan)
+			g_object_set (s_wired,
+			              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_NONE,
+			              NULL);
+	}
+
 
 	/* TODO: Add subchannels and other s390 options */
 
