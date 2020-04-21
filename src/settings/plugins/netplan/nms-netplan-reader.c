@@ -699,6 +699,27 @@ make_proxy_setting (NetplanNetDefinition *nd)
 }
 #endif  /* proxy support */
 
+static void
+make_routes (NetplanNetDefinition *nd, NMSettingIPConfig *s_ip, guint family)
+{
+	NMIPRoute *route = NULL;
+	GError *local = NULL;
+
+	for (unsigned i = 0; i < nd->routes->len; ++i) {
+		NetplanIPRoute *r = g_array_index(nd->routes, NetplanIPRoute*, i);
+		if (r->family != family)
+			continue;
+		gchar** ipmask = g_strsplit (r->to, "/", 2);
+		route = nm_ip_route_new (r->family, ipmask[0], atoi(ipmask[1]), r->via, r->metric, &local);
+		// TODO: implement route attributes
+		//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (3455));
+		//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean(r.onlink));
+		g_assert_no_error (local);
+		nm_setting_ip_config_add_route (s_ip, route);
+		nm_ip_route_unref (route);
+	}
+}
+
 static NMSetting *
 make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 {
@@ -710,7 +731,6 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	gs_free char *gateway = NULL;
 	GError *local = NULL;
 	char *method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
-	NMIPRoute *route = NULL;
 
 	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
 
@@ -928,7 +948,7 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	parse_dns_options (s_ip4, dns_options);
 #endif /* shared */
 
-#if 0  /* TODO: DNS priority, routes */
+#if 0  /* TODO: DNS priority */
 	/* DNS priority */
 	priority = svGetValueInt64 (netplan, "IPV4_DNS_PRIORITY", 10, G_MININT32, G_MAXINT32, 0);
 	g_object_set (s_ip4,
@@ -937,72 +957,10 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	              NULL);
 #endif
 
-	if (nd->routes != NULL) {
-		for (unsigned i = 0; i < nd->routes->len; ++i) {
-			NetplanIPRoute *r = g_array_index(nd->routes, NetplanIPRoute*, i);
-			if (r->family != AF_INET)
-				continue;
-			gchar** ipmask = g_strsplit (r->to, "/", 2);
-			route = nm_ip_route_new (r->family, ipmask[0], atoi(ipmask[1]), r->via, r->metric, &local);
-			// TODO: implement route attributes
-			//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (3455));
-			//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean(r.onlink));
-			g_assert_no_error (local);
-			nm_setting_ip_config_add_route (s_ip4, route);
-			nm_ip_route_unref (route);
-		}
-	}
+	if (nd->routes)
+		make_routes(nd, s_ip4, AF_INET);
 
-#if 0
-	/* Static routes  - route-<name> file */
-	route_path = utils_get_route_path (svFileGetName (netplan));
-
-	if (!routes_read) {
-		/* NOP */
-	} else if (utils_has_route_file_new_syntax (route_path)) {
-		/* Parse route file in new syntax */
-		route_netplan = utils_get_route_netplan (svFileGetName (netplan), FALSE);
-		if (route_netplan) {
-			for (i = 0;; i++) {
-				NMIPRoute *route = NULL;
-
-				if (!read_one_ip4_route (route_netplan, i, &route, error)) {
-					svCloseFile (route_netplan);
-					return NULL;
-				}
-
-				if (!route)
-					break;
-
-				if (!nm_setting_ip_config_add_route (s_ip4, route))
-					PARSE_WARNING ("duplicate IP4 route");
-				nm_ip_route_unref (route);
-			}
-			svCloseFile (route_netplan);
-		}
-	} else {
-		if (!read_route_file (AF_INET, route_path, s_ip4, error))
-			return NULL;
-	}
-
-	/* Legacy value NM used for a while but is incorrect (rh #459370) */
-	if (   !nm_streq (method, NM_SETTING_IP4_CONFIG_METHOD_SHARED)
-	    && !nm_setting_ip_config_get_num_dns_searches (s_ip4)) {
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "SEARCH", &value);
-		if (v) {
-			gs_free const char **searches = NULL;
-
-			searches = nm_utils_strsplit_set (v, " ");
-			if (searches) {
-				for (item = searches; *item; item++) {
-					if (!nm_setting_ip_config_add_dns_search (s_ip4, *item))
-						PARSE_WARNING ("duplicate DNS search '%s'", *item);
-				}
-			}
-		}
-	}
-
+#if 0 /* TODO: dad-timeout */
 	timeout = svGetValueInt64 (netplan, "ACD_TIMEOUT", 10, -1, NM_SETTING_IP_CONFIG_DAD_TIMEOUT_MAX, -2);
 	if (timeout == -2) {
 		timeout = svGetValueInt64 (netplan, "ARPING_WAIT", 10, -1,
@@ -1327,18 +1285,8 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	}
 #endif
 
-#if 0  /* TODO: ipv6 routes */
-	if (!routes_read) {
-		/* NOP */
-	} else {
-		gs_free char *route6_path = NULL;
-
-		/* Read static routes from route6-<interface> file */
-		route6_path = utils_get_route6_path (svFileGetName (netplan));
-		if (!read_route_file (AF_INET6, route6_path, s_ip6, error))
-			return NULL;
-	}
-#endif  /* ipv6 routes */
+	if (nd->routes)
+		make_routes(nd, s_ip6, AF_INET6);
 
 #if 0  /* TODO: IPv6 DNS searches */
 	/* DNS searches */

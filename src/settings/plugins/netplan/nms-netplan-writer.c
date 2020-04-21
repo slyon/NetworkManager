@@ -2783,6 +2783,15 @@ write_ip6_setting (NMConnection *connection,
 		                        "      metric: %ld\n", route_metric);
 #endif
 
+	// TODO: write combined IP4/IP6 routes, by storing them in a hashtable before
+	GString *route_str = write_route_settings (s_ip6);
+	if (route_str) {
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+	                        "      routes:\n%s", route_str->str);
+		g_string_free (route_str, TRUE);
+	}
+
+
 #if 0
     // TODO: Implement this route as a formal route (rather than gatewayN) to set route table
     // TODO: Implement RouteTable= (networkd)  for DHCP.
