@@ -2180,23 +2180,22 @@ get_route_attributes_string (NMIPRoute *route, int family)
 	return g_string_free (str, FALSE);
 }
 
-static GString *
-write_route_settings (NMSettingIPConfig *s_ip)
+static gboolean
+write_route_settings (NMSettingIPConfig *s_ip, GArray *out_routes)
 {
-	GString *contents;
 	NMIPRoute *route;
 	guint32 i, num;
 	int addr_family;
+	GHashTable *tbl;
 
 	addr_family = nm_setting_ip_config_get_addr_family (s_ip);
 
 	num = nm_setting_ip_config_get_num_routes (s_ip);
 	if (num == 0)
-		return NULL;
-
-	contents = g_string_new ("");
+		return FALSE;
 
 	for (i = 0; i < num; i++) {
+		tbl = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 		gs_free char *options = NULL;
 		const char *next_hop;
 		gint64 metric;
@@ -2206,13 +2205,16 @@ write_route_settings (NMSettingIPConfig *s_ip)
 		metric = nm_ip_route_get_metric (route);
 		options = get_route_attributes_string (route, addr_family);
 
-		g_string_append_printf (contents, "        - to: %s/%u\n",
-		                        nm_ip_route_get_dest (route),
-		                        nm_ip_route_get_prefix (route));
+		g_hash_table_insert (tbl, "to", g_strdup_printf("%s/%u",
+		                     nm_ip_route_get_dest (route),
+		                     nm_ip_route_get_prefix (route)));
 		if (next_hop)
-			g_string_append_printf (contents, "          via: %s\n", next_hop);
+			g_hash_table_insert (tbl, "via", g_strdup(next_hop));
 		if (metric >= 0)
-			g_string_append_printf (contents, "          metric: %u\n", (guint) metric);
+			g_hash_table_insert (tbl, "metric", g_strdup_printf("%u",
+			                     (guint) metric));
+
+		g_array_append_val (out_routes, tbl);
 #if 0  // TODO: implementing route options
 		if (options) {
 			g_string_append_c (contents, ' ');
@@ -2221,7 +2223,7 @@ write_route_settings (NMSettingIPConfig *s_ip)
 #endif
 	}
 
-	return contents;
+	return TRUE;
 }
 
 #if 0  // TODO: implement proxy support.
@@ -2452,6 +2454,7 @@ write_ip4_setting (NMConnection *connection,
                    GArray *addresses,
                    GArray *nameservers,
                    GArray *searches,
+                   GArray *routes,
                    GHashTable *dhcp_overrides,
                    GError **error)
 {
@@ -2518,18 +2521,6 @@ write_ip4_setting (NMConnection *connection,
 		g_array_append_val (addresses, value);
 	}
 
-#if 0  /* TODO: improve routes handling */
-		routes = g_array_new(...)
-	    // Routes -> split up into routes section
-	    // routes = g_array_new (...)
-	    // ...
-	    // g_hash_table_insert (netplan, "routes", <routes>)
-	    // 
-		g_hash_table_insert (route,
-		                     "to",
-		                     nm_ip_address_get_address (addr));
-#endif
-
 	gateway = nm_setting_ip_config_get_gateway (s_ip4);
 	if (gateway)
 		g_output_stream_printf(netplan, 0, NULL, NULL,
@@ -2583,13 +2574,7 @@ write_ip4_setting (NMConnection *connection,
 	                      timeout);
 #endif
 
-	// TODO: write combined IP4/IP6 routes, by storing them in a hashtable before
-	GString *route_str = write_route_settings (s_ip4);
-	if (route_str) {
-		g_output_stream_printf (netplan, 0, NULL, NULL,
-	                        "      routes:\n%s", route_str->str);
-		g_string_free (route_str, TRUE);
-	}
+	write_route_settings (s_ip4, routes);
 
 #if 0  // TODO: Implement route settings here for ipv4
 	svSetValueBoolean (netplan, "IPV4_FAILURE_FATAL", !nm_setting_ip_config_get_may_fail (s_ip4));
@@ -2684,10 +2669,11 @@ write_ip6_setting_dhcp_hostname (NMSettingIPConfig *s_ip6,
 static gboolean
 write_ip6_setting (NMConnection *connection,
                    GOutputStream *netplan,
-		   GArray *addresses,
-		   GArray *nameservers,
-		   GArray *searches,
-		   GHashTable *dhcp_overrides,
+                   GArray *addresses,
+                   GArray *nameservers,
+                   GArray *searches,
+                   GArray *routes,
+                   GHashTable *dhcp_overrides,
                    GError **error)
 {
 	NMSettingIPConfig *s_ip6;
@@ -2783,14 +2769,7 @@ write_ip6_setting (NMConnection *connection,
 		                        "      metric: %ld\n", route_metric);
 #endif
 
-	// TODO: write combined IP4/IP6 routes, by storing them in a hashtable before
-	GString *route_str = write_route_settings (s_ip6);
-	if (route_str) {
-		g_output_stream_printf (netplan, 0, NULL, NULL,
-	                        "      routes:\n%s", route_str->str);
-		g_string_free (route_str, TRUE);
-	}
-
+	write_route_settings (s_ip6, routes);
 
 #if 0
     // TODO: Implement this route as a formal route (rather than gatewayN) to set route table
@@ -2901,7 +2880,7 @@ do_write_construct (NMConnection *connection,
 	//NMSettingIPConfig *s_ip6;
 	const gchar *type = NULL, *id = NULL;
 	GString *id_str = NULL;
-	GArray *addresses, *nameservers, *searches;
+	GArray *addresses, *nameservers, *searches, *routes;
 	GHashTable *dhcp4_overrides, *dhcp6_overrides;
 
 	nm_assert (NM_IS_CONNECTION (connection));
@@ -2910,6 +2889,7 @@ do_write_construct (NMConnection *connection,
 	addresses = g_array_new (TRUE, FALSE, sizeof(char *));
 	nameservers = g_array_new (TRUE, FALSE, sizeof(char *));
 	searches = g_array_new (TRUE, FALSE, sizeof(char *));
+	routes = g_array_new (TRUE, FALSE, sizeof(GHashTable *));
 	dhcp6_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 	dhcp4_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 
@@ -3028,6 +3008,7 @@ do_write_construct (NMConnection *connection,
 	                        addresses,
 	                        nameservers,
 	                        searches,
+	                        routes,
 	                        dhcp4_overrides,
 	                        error))
 		return FALSE;
@@ -3037,6 +3018,7 @@ do_write_construct (NMConnection *connection,
 	                        addresses,
 	                        nameservers,
 	                        searches,
+	                        routes,
 	                        dhcp6_overrides,
 	                        error))
 		return FALSE;
@@ -3056,6 +3038,28 @@ do_write_construct (NMConnection *connection,
 		write_array_to_sequence(nameservers, netplan, "        addresses:");
 	if (searches->len > 0)
 		write_array_to_sequence(searches, netplan, "        search:");
+
+	/**
+	 * Write pre-filled IP4 & IP6 routes mapping
+	 */
+	if (routes->len > 0) {
+		g_output_stream_printf (netplan, 0, NULL, NULL, "      routes:\n");
+		GHashTable *tbl = NULL;
+		for (unsigned i = 0; i < routes->len; ++i) {
+			tbl = g_array_index(routes, GHashTable*, i);
+			size_t len = 3;
+			gchar* keys[3] = { "to", "via", "metric" };
+			gchar* indent = NULL;
+			gchar* v = NULL;
+			for (unsigned j = 0; j < len; ++j) {
+				indent = (!j) ? "      - " : "        ";
+				v = (gchar*) g_hash_table_lookup(tbl, keys[j]);
+				if (v)
+					g_output_stream_printf (netplan, 0, NULL, NULL,
+					                        "%s%s: %s\n", indent, keys[j], v);
+			}
+		}
+	}
 
 	/**
 	 * Write dhcp6-overrides
