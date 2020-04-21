@@ -1,0 +1,25 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eth42:
+      match: { macaddress: DE:AD:BE:EF:CA:FE }
+      macaddress: 00:11:22:33:44:55
+      mtu: 1492
+      wakeonlan: true
+      gateway4: 1.1.1.1
+      gateway6: 2001:dead:beef::1
+      ipv6-address-generation: stable-privacy
+      addresses: [1.1.1.3/24, 1.1.1.5/24, 1003:1234:abcd::1/11, 2003:1234:abcd::2/22, 3003:1234:abcd::3/33]
+      nameservers:
+        addresses: [4.2.2.1, 4.2.2.2, fade:102:103::face, cafe:ffff:eeee:dddd:cccc:bbbb:aaaa:feed]
+        search: [foobar.com, lab.foobar.com]
+      routes:
+      - to: 2222:aaaa:bbbb:cccc::/64
+        via: 2222:aaaa:bbbb:cccc:dddd:eeee:5555:6666
+        metric: 99
+      networkmanager:
+        name: write-test-static
+        uuid: 3f5705e4-bb5b-4e4d-a2f9-e8f44d508ee5
+        stable-id: stable-id-test-static
+        device: eth42
