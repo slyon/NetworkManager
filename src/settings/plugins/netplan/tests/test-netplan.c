@@ -394,9 +394,9 @@ test_write_wired_basic (void)
 
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_ID, "write-test",
-	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
-				  NM_SETTING_CONNECTION_STABLE_ID, "stable-id-test",
-				  NM_SETTING_CONNECTION_INTERFACE_NAME, "eth42",
+	              NM_SETTING_CONNECTION_UUID, "dc6604ee-8924-4439-b9a3-ffda82e53427",
+	              NM_SETTING_CONNECTION_STABLE_ID, "stable-id-test",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "eth42",
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRED_SETTING_NAME,
 	              NULL);
 
@@ -406,6 +406,7 @@ test_write_wired_basic (void)
 
 	g_object_set (s_wired,
 	              NM_SETTING_WIRED_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
+	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE,
 	              NULL);
 
 	/* IP4 setting */
@@ -427,11 +428,17 @@ test_write_wired_basic (void)
 
 	nmtst_assert_connection_verifies (connection);
 
-	_writer_new_connection (connection,
+	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR,
+	                        TEST_NETPLAN_DIR"/exp-wired-basic.yaml",
 	                        &testfile);
 
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	/* Verify Wake-on-LAN */
+	s_wired = nm_connection_get_setting_wired (reread);
+	g_assert_true (s_wired);
+	g_assert_true (nm_setting_wired_get_wake_on_lan (s_wired) == NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE);
 
 	nm_connection_add_setting (connection, nm_setting_proxy_new ());
 	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
@@ -463,9 +470,9 @@ test_write_wired_static (void)
 
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_ID, "write-test-static",
-	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
-				  NM_SETTING_CONNECTION_STABLE_ID, "stable-id-test-static",
-				  NM_SETTING_CONNECTION_INTERFACE_NAME, "eth42",
+	              NM_SETTING_CONNECTION_UUID, "3f5705e4-bb5b-4e4d-a2f9-e8f44d508ee5",
+	              NM_SETTING_CONNECTION_STABLE_ID, "stable-id-test-static",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "eth42",
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRED_SETTING_NAME,
 	              NULL);
 
@@ -475,6 +482,9 @@ test_write_wired_static (void)
 
 	g_object_set (s_wired,
 	              NM_SETTING_WIRED_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
+	              NM_SETTING_WIRED_CLONED_MAC_ADDRESS, "00:11:22:33:44:55",
+	              // XXX: Netplan will change any flag to DEFAULT, except IGNORE
+	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_DEFAULT,
 	              NM_SETTING_WIRED_MTU, mtu,
 	              NULL);
 
@@ -561,11 +571,18 @@ test_write_wired_static (void)
 
 	nmtst_assert_connection_verifies (connection);
 
-	_writer_new_connection (connection,
+	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR,
+	                        TEST_NETPLAN_DIR"/exp-wired-static.yaml",
 	                        &testfile);
 
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	/* Verify Wake-on-LAN */
+	s_wired = nm_connection_get_setting_wired (reread);
+	g_assert_true (s_wired);
+	// XXX: netplan can only set DEFAULT (wake-on-lan = true) or IGNORE (wake-on-lan = false)
+	g_assert_true (nm_setting_wired_get_wake_on_lan (s_wired) == NM_SETTING_WIRED_WAKE_ON_LAN_DEFAULT);
 
 	nm_connection_add_setting (connection, nm_setting_proxy_new ());
 	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);

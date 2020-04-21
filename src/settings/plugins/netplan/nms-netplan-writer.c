@@ -1203,6 +1203,11 @@ write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 				        "      mtu: %d\n", mtu);
 
+	/* TODO: Implement all the different WoLAN flags in netplan. */
+	if (nm_setting_wired_get_wake_on_lan (s_wired) != NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE) {
+		g_output_stream_printf (netplan, 0, NULL, NULL, "      wakeonlan: true\n");
+	}
+
 #if 0 // TODO: implement s390 subchannels 
 	s390_subchannels = nm_setting_wired_get_s390_subchannels (s_wired);
 
