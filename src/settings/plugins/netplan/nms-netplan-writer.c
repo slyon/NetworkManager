@@ -2828,7 +2828,8 @@ write_ip_routing_rules (NMConnection *connection,
                         GOutputStream *netplan)
 {
 	//gsize idx = 0;
-	int is_ipv4;
+	int is_ipv4, tmp;
+	long int li;
 	GString *routing_policy;
 
 	routing_policy = g_string_sized_new (200);
@@ -2837,6 +2838,8 @@ write_ip_routing_rules (NMConnection *connection,
 		const int addr_family = is_ipv4 ? AF_INET : AF_INET6;
 		NMSettingIPConfig *s_ip;
 		guint i, num;
+		guint8 to_len, from_len;
+		const char *to = NULL, *from = NULL;
 
 		s_ip = nm_connection_get_setting_ip_config (connection, addr_family);
 		if (!s_ip)
@@ -2847,19 +2850,48 @@ write_ip_routing_rules (NMConnection *connection,
 			NMIPRoutingRule *rule = nm_setting_ip_config_get_routing_rule (s_ip, i);
 			gs_free const char *s = NULL;
 			//char key[64];
+			to = nm_ip_routing_rule_get_to (rule);
+			to_len = nm_ip_routing_rule_get_to_len (rule);
+			from = nm_ip_routing_rule_get_from (rule);
+			from_len = nm_ip_routing_rule_get_from_len (rule);
 
-			g_string_append_printf(routing_policy, "        - to: %s\n",
-			                       nm_ip_routing_rule_get_to(rule));
-			g_string_append_printf(routing_policy, "          from: %s\n",
-			                       nm_ip_routing_rule_get_from(rule));
-			g_string_append_printf(routing_policy, "          table: %d\n",
-			                       nm_ip_routing_rule_get_table(rule));
-			g_string_append_printf(routing_policy, "          mark: %d\n",
-			                       nm_ip_routing_rule_get_fwmark(rule));
-			g_string_append_printf(routing_policy, "          type-of-service: %d\n",
-			                       nm_ip_routing_rule_get_tos(rule));
-			g_string_append_printf(routing_policy, "          priority: %ld\n",
-			                       nm_ip_routing_rule_get_priority(rule));
+			/* Fallback to from=ALL, iff neither "to" nor "from" are set.
+			 * As done in nm_ip_routing_rule_to_string() */
+			if (!to && !from) {
+				from = is_ipv4 ? "0.0.0.0" : "::";
+				from_len = 0;
+			}
+
+			/* Netplan expects either "to" or "from" to be set. */
+			if (to)
+				g_string_append_printf (routing_policy,
+				                        "        - to: %s/%u\n", to, to_len);
+			else if (from)
+				g_string_append_printf (routing_policy,
+			                            "        - from: %s/%u\n", from, from_len);
+			else
+				nm_assert_not_reached ();
+
+			if (to && from)
+				g_string_append_printf (routing_policy,
+				                        "          from: %s/%u\n", from, from_len);
+
+			tmp = nm_ip_routing_rule_get_table (rule);
+			if (tmp)
+				g_string_append_printf (routing_policy, "          table: %d\n", tmp);
+
+			tmp = nm_ip_routing_rule_get_fwmark (rule);
+			if (tmp)
+				g_string_append_printf (routing_policy, "          mark: %d\n", tmp);
+
+			tmp = nm_ip_routing_rule_get_tos (rule);
+			printf("TOS %d\n", tmp);
+			if (tmp)
+				g_string_append_printf (routing_policy, "          type-of-service: %d\n", tmp);
+
+			li = nm_ip_routing_rule_get_priority (rule);
+			if (li)
+				g_string_append_printf (routing_policy, "          priority: %ld\n", li);
 		}
 	}
 
@@ -3040,28 +3072,6 @@ do_write_construct (NMConnection *connection,
 		write_array_to_sequence(searches, netplan, "        search:");
 
 	/**
-	 * Write pre-filled IP4 & IP6 routes mapping
-	 */
-	if (routes->len > 0) {
-		g_output_stream_printf (netplan, 0, NULL, NULL, "      routes:\n");
-		GHashTable *tbl = NULL;
-		for (unsigned i = 0; i < routes->len; ++i) {
-			tbl = g_array_index(routes, GHashTable*, i);
-			size_t len = 3;
-			gchar* keys[3] = { "to", "via", "metric" };
-			gchar* indent = NULL;
-			gchar* v = NULL;
-			for (unsigned j = 0; j < len; ++j) {
-				indent = (!j) ? "      - " : "        ";
-				v = (gchar*) g_hash_table_lookup(tbl, keys[j]);
-				if (v)
-					g_output_stream_printf (netplan, 0, NULL, NULL,
-					                        "%s%s: %s\n", indent, keys[j], v);
-			}
-		}
-	}
-
-	/**
 	 * Write dhcp6-overrides
 	 */
 	if (g_hash_table_size(dhcp6_overrides) > 0) {
@@ -3085,6 +3095,31 @@ do_write_construct (NMConnection *connection,
 		g_free(htd.indent);
 	}
 
+	/**
+	 * Write pre-filled IP4 & IP6 routes mapping
+	 */
+	if (routes->len > 0) {
+		g_output_stream_printf (netplan, 0, NULL, NULL, "      routes:\n");
+		GHashTable *tbl = NULL;
+		for (unsigned i = 0; i < routes->len; ++i) {
+			tbl = g_array_index(routes, GHashTable*, i);
+			size_t len = 3;
+			gchar* keys[3] = { "to", "via", "metric" };
+			gchar* indent = NULL;
+			gchar* v = NULL;
+			for (unsigned j = 0; j < len; ++j) {
+				indent = (!j) ? "      - " : "        ";
+				v = (gchar*) g_hash_table_lookup(tbl, keys[j]);
+				if (v)
+					g_output_stream_printf (netplan, 0, NULL, NULL,
+					                        "%s%s: %s\n", indent, keys[j], v);
+			}
+		}
+	}
+
+	/**
+	 * Write routing rules (routing-policy)
+	 */
 	write_ip_routing_rules (connection, netplan);
 
 	write_connection_setting (s_con, netplan);
