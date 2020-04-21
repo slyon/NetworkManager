@@ -2076,30 +2076,42 @@ modem_connection_from_netplan (const char *file,
 
 /* TODO: Support ethtool settings */
 
-#if 0  /* TODO: Read routing rules (routing-policy) */
 static void
 read_routing_rules (NetplanNetDefinition *nd,
-                    gboolean routes_read,
                     NMSettingIPConfig *s_ip4,
                     NMSettingIPConfig *s_ip6)
 {
-	gs_unref_ptrarray GPtrArray *routing_rules = NULL;
-	guint i;
+	NMIPRoutingRule *rule;
 
-	routing_rules = read_routing_rules_parse (netplan, routes_read);
-	if (!routing_rules)
-		return;
+	for (unsigned i = 0; i < nd->ip_rules->len; ++i) {
+		NetplanIPRule *r = g_array_index(nd->ip_rules, NetplanIPRule*, i);
+		gboolean is_ipv4 = r->family == AF_INET;
 
-	for (i = 0; i < routing_rules->len; i++) {
-		NMIPRoutingRule *rule = routing_rules->pdata[i];
+		rule = nm_ip_routing_rule_new (r->family);
+		if (r->from) {
+			gchar** ipmask = g_strsplit (r->from, "/", 2);
+			guint8 len = atoi(ipmask[1]);
+			nm_ip_routing_rule_set_to (rule, len ? ipmask[0] : NULL, len);
+		}
+		if (r->to) {
+			gchar** ipmask = g_strsplit (r->to, "/", 2);
+			guint8 len = atoi(ipmask[1]);
+			nm_ip_routing_rule_set_to (rule, len ? ipmask[0] : NULL, len);
+		}
+		if (r->table != NETPLAN_ROUTE_TABLE_UNSPEC)
+			nm_ip_routing_rule_set_table (rule, r->table);
+		if (r->priority != NETPLAN_IP_RULE_PRIO_UNSPEC)
+			nm_ip_routing_rule_set_priority (rule, r->priority);
+		/* XXX: Fix/implement fwmask, which is missing in NetplanNetDefinition. */
+		if (r->fwmark != NETPLAN_IP_RULE_FW_MARK_UNSPEC)
+			nm_ip_routing_rule_set_fwmark (rule, r->fwmark, 0);
+		if (r->tos != NETPLAN_IP_RULE_TOS_UNSPEC)
+			nm_ip_routing_rule_set_tos (rule, r->tos);
 
-		nm_setting_ip_config_add_routing_rule (  (nm_ip_routing_rule_get_addr_family (rule) == AF_INET)
-		                                       ? s_ip4
-		                                       : s_ip6,
-		                                       rule);
+		nm_setting_ip_config_add_routing_rule (is_ipv4 ? s_ip4 : s_ip6, rule);
+		nm_ip_routing_rule_unref (rule);
 	}
 }
-#endif  /* routing rules */
 
 static NMSetting *
 make_wired_setting (NetplanNetDefinition *nd,
@@ -2928,18 +2940,6 @@ connection_from_file_full (const char *filename,
 
 #if 0
 	parse_ethtool_options (main_netplan, connection);
-
-	has_complex_routes_v4 = utils_has_complex_routes (filename, AF_INET);
-	has_complex_routes_v6 = utils_has_complex_routes (filename, AF_INET6);
-
-	if (has_complex_routes_v4 || has_complex_routes_v6) {
-		if (has_complex_routes_v4 && !has_complex_routes_v6)
-			PARSE_WARNING ("'rule-' file is present; you will need to use a dispatcher script to apply these routes");
-		else if (has_complex_routes_v6 && !has_complex_routes_v4)
-			PARSE_WARNING ("'rule6-' file is present; you will need to use a dispatcher script to apply these routes");
-		else
-			PARSE_WARNING ("'rule-' and 'rule6-' files are present; you will need to use a dispatcher script to apply these routes");
-	}
 #endif
 
 	s_ip6 = make_ip6_setting (netdef, error);
@@ -2960,12 +2960,12 @@ connection_from_file_full (const char *filename,
 		nm_connection_add_setting (connection, s_match);
 	_LOGT ("netplan conn %p : %s", connection, nm_connection_get_uuid(connection));
 
-#if 0  /* TODO: routing rules, sriov, tc, etc. */
-	read_routing_rules (main_netplan,
-	                    !has_complex_routes_v4 && !has_complex_routes_v6,
-	                    NM_SETTING_IP_CONFIG (s_ip4),
-	                    NM_SETTING_IP_CONFIG (s_ip6));
+	if (netdef->ip_rules)
+		read_routing_rules (netdef,
+		                    NM_SETTING_IP_CONFIG (s_ip4),
+		                    NM_SETTING_IP_CONFIG (s_ip6));
 
+#if 0  /* TODO: sriov, tc, etc. */
 	s_sriov = make_sriov_setting (main_netplan);
 	if (s_sriov)
 		nm_connection_add_setting (connection, s_sriov);
