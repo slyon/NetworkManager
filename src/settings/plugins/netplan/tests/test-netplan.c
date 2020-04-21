@@ -406,7 +406,7 @@ test_write_wired_basic (void)
 
 	g_object_set (s_wired,
 	              NM_SETTING_WIRED_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
-	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE,
+	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_NONE,
 	              NULL);
 
 	/* IP4 setting */
@@ -438,7 +438,7 @@ test_write_wired_basic (void)
 	/* Verify Wake-on-LAN */
 	s_wired = nm_connection_get_setting_wired (reread);
 	g_assert_true (s_wired);
-	g_assert_true (nm_setting_wired_get_wake_on_lan (s_wired) == NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE);
+	g_assert_true (nm_setting_wired_get_wake_on_lan (s_wired) == NM_SETTING_WIRED_WAKE_ON_LAN_NONE);
 
 	nm_connection_add_setting (connection, nm_setting_proxy_new ());
 	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
