@@ -383,20 +383,20 @@ _ip_routing_rule_add_to_setting (NMSettingIPConfig *s_ip,
 
 static void
 _add_ip_auto_settings (NMConnection *connection,
-                       NMSettingIPConfig *s_ip4,
-                       NMSettingIPConfig *s_ip6)
+                       NMSettingIPConfig **s_ip4,
+                       NMSettingIPConfig **s_ip6)
 {
 	/* IP4 setting */
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-	g_object_set (s_ip4,
+	*s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (*s_ip4));
+	g_object_set (*s_ip4,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
 	              NULL);
 
 	/* IP6 setting */
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-	g_object_set (s_ip6,
+	*s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (*s_ip6));
+	g_object_set (*s_ip6,
 	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
 	              NULL);
 }
