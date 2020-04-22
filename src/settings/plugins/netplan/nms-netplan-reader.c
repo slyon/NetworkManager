@@ -2238,26 +2238,53 @@ make_bond_setting (NetplanNetDefinition *nd,
 
 	s_bond = NM_SETTING_BOND (nm_setting_bond_new ());
 
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, nd->bond_params.mode);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, nd->bond_params.lacp_rate);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIIMON, nd->bond_params.monitor_interval);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIN_LINKS, g_strdup_printf("%u", nd->bond_params.min_links));
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY, nd->bond_params.transmit_hash_policy);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_AD_SELECT, nd->bond_params.selection_logic);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE, nd->bond_params.all_slaves_active ? "1" : "0");
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_INTERVAL, nd->bond_params.arp_interval);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE,
+	                            nd->bond_params.mode);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE,
+	                            nd->bond_params.lacp_rate);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIIMON,
+	                            nd->bond_params.monitor_interval);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIN_LINKS,
+	                            nd->bond_params.min_links
+	                            ? g_strdup_printf("%u", nd->bond_params.min_links)
+	                            : NULL);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY,
+	                            nd->bond_params.transmit_hash_policy);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_AD_SELECT,
+	                            nd->bond_params.selection_logic);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE,
+	                            nd->bond_params.all_slaves_active ? "1" : NULL);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_INTERVAL,
+	                            nd->bond_params.arp_interval);
 	//NM_SETTING_BOND_OPTION_ARP_IP_TARGET handled below
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_VALIDATE, nd->bond_params.arp_validate);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_ALL_TARGETS, nd->bond_params.arp_all_targets);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY, nd->bond_params.up_delay);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, nd->bond_params.down_delay);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_FAIL_OVER_MAC, nd->bond_params.fail_over_mac_policy);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_NUM_GRAT_ARP, g_strdup_printf("%u", nd->bond_params.gratuitous_arp));
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, g_strdup_printf("%u", nd->bond_params.packets_per_slave));
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, nd->bond_params.primary_reselect_policy);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_RESEND_IGMP, g_strdup_printf("%u", nd->bond_params.resend_igmp));
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LP_INTERVAL, nd->bond_params.learn_interval);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, nd->bond_params.primary_slave);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_VALIDATE,
+	                            nd->bond_params.arp_validate);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_ALL_TARGETS,
+	                            nd->bond_params.arp_all_targets);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY,
+	                            nd->bond_params.up_delay);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY,
+                                nd->bond_params.down_delay);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_FAIL_OVER_MAC,
+                                nd->bond_params.fail_over_mac_policy);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_NUM_GRAT_ARP,
+	                            nd->bond_params.gratuitous_arp > 1 // 1 is default
+	                            ? g_strdup_printf("%u", nd->bond_params.gratuitous_arp)
+	                            : NULL);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE,
+	                            nd->bond_params.packets_per_slave != 1 // 1 is default. 0 is random
+	                            ? g_strdup_printf("%u", nd->bond_params.packets_per_slave)
+	                            : NULL);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY_RESELECT,
+	                            nd->bond_params.primary_reselect_policy);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_RESEND_IGMP,
+	                            nd->bond_params.resend_igmp > 1 // 1 is default
+	                            ? g_strdup_printf("%u", nd->bond_params.resend_igmp)
+	                            : NULL);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LP_INTERVAL,
+                                nd->bond_params.learn_interval);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY,
+                                nd->bond_params.primary_slave);
 	// XXX: Needs to be implemented in netplan
 	//#define NM_SETTING_BOND_OPTION_ACTIVE_SLAVE      "active_slave"
 	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYS_PRIO "ad_actor_sys_prio"
