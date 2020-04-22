@@ -103,7 +103,6 @@ test_write_wired_basic (void)
 	/* Connection setting */
 	s_con = (NMSettingConnection *) nm_setting_connection_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_con));
-
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_ID, "write-test",
 	              NM_SETTING_CONNECTION_UUID, "dc6604ee-8924-4439-b9a3-ffda82e53427",
@@ -115,36 +114,19 @@ test_write_wired_basic (void)
 	/* Wired setting */
 	s_wired = (NMSettingWired *) nm_setting_wired_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_wired));
-
 	g_object_set (s_wired,
 	              NM_SETTING_WIRED_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
 	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_NONE,
 	              NULL);
 
-	/* IP4 setting */
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
-	              NULL);
-
-
-	/* IP6 setting */
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
-	              NULL);
-
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, s_ip4, s_ip6);
 	nmtst_assert_connection_verifies (connection);
 
 	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR,
 	                        TEST_NETPLAN_DIR"/exp-wired-basic.yaml",
 	                        &testfile);
-
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
 	/* Verify Wake-on-LAN */
@@ -395,70 +377,8 @@ test_write_wired_static_routes (void)
 	                        TEST_SCRATCH_DIR,
 	                        &testfile);
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
-	/* XXX: improve test
-	_writer_new_connection_reread (connection,
-	                               TEST_SCRATCH_DIR,
-	                               &testfile,
-	                               NULL,//TEST_IFCFG_DIR"/ifcfg-Test_Write_Wired_Static_Routes.cexpected",
-	                               &reread,
-	                               &reread_same);
-								   */
-	/* ifcfg does not support setting onlink=0. It gets lost during write+re-read.
-	 * Assert that it's missing, and patch it to check whether the rest of the
-	 * connection equals. */
-	/*
-	g_assert (!reread_same);
-	nmtst_assert_connection_verifies_without_normalization (reread);
-	s_ip4 = nm_connection_get_setting_ip4_config (reread);
-	g_assert (s_ip4);
-	g_assert_cmpint (nm_setting_ip_config_get_num_routes (s_ip4), ==, 2);
-	route = nm_setting_ip_config_get_route (s_ip4, 1);
-	g_assert (route);
-	g_assert (!nm_ip_route_get_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK));
-	nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean (FALSE));
-	*/
+
 	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
-
-	//routefile = utils_get_route_path (testfile);
-}
-
-static NMIPRoutingRule *
-_ip_routing_rule_new (int addr_family,
-                      const char *str)
-{
-	NMIPRoutingRuleAsStringFlags flags = NM_IP_ROUTING_RULE_AS_STRING_FLAGS_NONE;
-	gs_free_error GError *local = NULL;
-	NMIPRoutingRule *rule;
-
-	if (addr_family != AF_UNSPEC) {
-		if (addr_family == AF_INET)
-			flags = NM_IP_ROUTING_RULE_AS_STRING_FLAGS_AF_INET;
-		else {
-			g_assert (addr_family == AF_INET6);
-			flags = NM_IP_ROUTING_RULE_AS_STRING_FLAGS_AF_INET6;
-		}
-	}
-
-	rule = nm_ip_routing_rule_from_string (str,
-	                                       NM_IP_ROUTING_RULE_AS_STRING_FLAGS_VALIDATE
-	                                       | flags,
-	                                       NULL,
-	                                       nmtst_get_rand_bool () ? &local : NULL);
-	nmtst_assert_success (rule, local);
-
-	if (addr_family != AF_UNSPEC)
-		g_assert_cmpint (nm_ip_routing_rule_get_addr_family (rule), ==, addr_family);
-	return rule;
-}
-
-static void
-_ip_routing_rule_add_to_setting (NMSettingIPConfig *s_ip,
-                                 const char *str)
-{
-	nm_auto_unref_ip_routing_rule NMIPRoutingRule *rule = NULL;
-
-	rule = _ip_routing_rule_new (nm_setting_ip_config_get_addr_family (s_ip), str);
-	nm_setting_ip_config_add_routing_rule (s_ip, rule);
 }
 
 static void
@@ -488,19 +408,8 @@ test_write_routing_rules (void)
 	s_wired = (NMSettingWired *) nm_setting_wired_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_wired));
 
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
-	              NULL);
-
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
-	              NULL);
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, s_ip4, s_ip6);
 
 	_ip_routing_rule_add_to_setting (s_ip4, "pref 10 from 0.0.0.0/0 table 1");
 	_ip_routing_rule_add_to_setting (s_ip4, "priority 10 to 192.167.8.0/24 table 2");
@@ -685,26 +594,13 @@ test_wifi_wowlan_mac_randomization (void)
 				  NM_SETTING_WIRELESS_WAKE_ON_WLAN, NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL,
 	              NULL);
 
-	/* IP4 setting */
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
-	              NULL);
-
-	/* IP6 setting */
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
-	              NULL);
-
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, s_ip4, s_ip6);
 	nmtst_assert_connection_verifies (connection);
 
 	_writer_new_connection (connection,
 	                        TEST_SCRATCH_DIR,
 	                        &testfile);
-
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
 	/* Verify WoWLan & MAC address randomization */
@@ -768,26 +664,8 @@ test_write_bond_main (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LP_INTERVAL, "2");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, "slave0");
 
-	/* IP4 setting */
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
-	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
-	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
-	              NULL);
-
-	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
-	g_assert_no_error (error);
-	nm_setting_ip_config_add_address (s_ip4, addr);
-	nm_ip_address_unref (addr);
-
-	/* IP6 setting */
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
-	              NULL);
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, s_ip4, s_ip6);
 
 	// cannot re-read because of missing slave0 definition
 	_writer_new_connection_no_reread (connection,
@@ -844,26 +722,8 @@ test_write_bond_rr (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "5");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, "2");
 
-	/* IP4 setting */
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
-	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
-	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
-	              NULL);
-
-	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
-	g_assert_no_error (error);
-	nm_setting_ip_config_add_address (s_ip4, addr);
-	nm_ip_address_unref (addr);
-
-	/* IP6 setting */
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
-	              NULL);
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, s_ip4, s_ip6);
 
 	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR_TMP,
@@ -911,26 +771,8 @@ test_write_bond_lacp (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, "802.3ad");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, "fast");
 
-	/* IP4 setting */
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
-	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
-	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
-	              NULL);
-
-	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
-	g_assert_no_error (error);
-	nm_setting_ip_config_add_address (s_ip4, addr);
-	nm_ip_address_unref (addr);
-
-	/* IP6 setting */
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
-	              NULL);
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, s_ip4, s_ip6);
 
 	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR_TMP,
@@ -1104,20 +946,8 @@ test_write_modem_cdma (void)
 	              NM_SETTING_GSM_MTU, 1600,
 	              NULL);
 
-	/* IP4 setting */
-	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
-	              NULL);
-
-	/* IP6 setting */
-	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
-	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
-	              NULL);
-
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, s_ip4, s_ip6);
 	nmtst_assert_connection_verifies (connection);
 
 	_writer_new_connection (connection, TEST_SCRATCH_DIR, &testfile);
