@@ -338,4 +338,67 @@ _writer_new_connection (NMConnection *connection,
 	_writer_new_connec_exp (connection, netplan_dir, NO_EXPECTED, out_filename);
 }
 
+/*****************************************************************************/
+
+static NMIPRoutingRule *
+_ip_routing_rule_new (int addr_family,
+                      const char *str)
+{
+	NMIPRoutingRuleAsStringFlags flags = NM_IP_ROUTING_RULE_AS_STRING_FLAGS_NONE;
+	gs_free_error GError *local = NULL;
+	NMIPRoutingRule *rule;
+
+	if (addr_family != AF_UNSPEC) {
+		if (addr_family == AF_INET)
+			flags = NM_IP_ROUTING_RULE_AS_STRING_FLAGS_AF_INET;
+		else {
+			g_assert (addr_family == AF_INET6);
+			flags = NM_IP_ROUTING_RULE_AS_STRING_FLAGS_AF_INET6;
+		}
+	}
+
+	rule = nm_ip_routing_rule_from_string (str,
+	                                       NM_IP_ROUTING_RULE_AS_STRING_FLAGS_VALIDATE
+	                                       | flags,
+	                                       NULL,
+	                                       nmtst_get_rand_bool () ? &local : NULL);
+	nmtst_assert_success (rule, local);
+
+	if (addr_family != AF_UNSPEC)
+		g_assert_cmpint (nm_ip_routing_rule_get_addr_family (rule), ==, addr_family);
+	return rule;
+}
+
+static void
+_ip_routing_rule_add_to_setting (NMSettingIPConfig *s_ip,
+                                 const char *str)
+{
+	nm_auto_unref_ip_routing_rule NMIPRoutingRule *rule = NULL;
+
+	rule = _ip_routing_rule_new (nm_setting_ip_config_get_addr_family (s_ip), str);
+	nm_setting_ip_config_add_routing_rule (s_ip, rule);
+}
+
+/*****************************************************************************/
+
+static void
+_add_ip_auto_settings (NMConnection *connection,
+                       NMSettingIPConfig *s_ip4,
+                       NMSettingIPConfig *s_ip6)
+{
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_AUTO,
+	              NULL);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_AUTO,
+	              NULL);
+}
+
 #endif /* __NETPLAN_TEST_UTILS_H__ */
