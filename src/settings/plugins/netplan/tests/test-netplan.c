@@ -93,7 +93,7 @@ _clear_all_netdefs (void)
 static NMConnection *
 _connection_from_file (const char *filename,
                        const char *network_file,
-                       const char *test_type,
+                       const char *netdef_id,
                        char **out_unhandled)
 {
 	NMConnection *connection;
@@ -104,7 +104,7 @@ _connection_from_file (const char *filename,
 
 	/* Clear netdefs before reading new data from file */
 	_clear_all_netdefs ();
-	connection = nmtst_connection_from_file (filename, network_file, test_type,
+	connection = nmtst_connection_from_file (filename, network_file, netdef_id,
 	                                         out_unhandled ?: &unhandled_fallback, &error);
 	g_assert_no_error (error);
 	g_assert (!unhandled_fallback);
@@ -117,7 +117,7 @@ _connection_from_file (const char *filename,
 }
 
 /* dummy path for an "expected" file, meaning: don't check for expected
- * written ifcfg file. */
+ * written netplan file. */
 static const char NO_EXPECTED[1];
 
 static void
@@ -226,6 +226,45 @@ _assert_reread_same (NMConnection *connection, NMConnection *reread)
 {
 	nmtst_assert_connection_verifies_without_normalization (reread);
 	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
+_writer_new_connection_no_reread (NMConnection *connection,
+                                  const char *netplan_dir,
+                                  char **out_filename,
+                                  const char *expected)
+{
+	gboolean success;
+	GError *error = NULL;
+	char *filename = NULL;
+	gs_unref_object NMConnection *con_verified = NULL;
+
+	g_assert (NM_IS_CONNECTION (connection));
+	g_assert (netplan_dir);
+
+	/* Duplicate connection and clear current netdefs, to continue testing with a clean state. */
+	con_verified = nmtst_connection_duplicate_and_normalize (connection);
+	_clear_all_netdefs();
+
+	success = nms_netplan_writer_write_connection (con_verified,
+	                                               netplan_dir,
+	                                               NULL,
+	                                               NULL,
+	                                               NULL,
+	                                               &filename,
+	                                               NULL,
+	                                               NULL,
+	                                               &error);
+	nmtst_assert_success (success, error);
+	g_assert (filename && filename[0]);
+
+	_assert_expected_content (con_verified, filename, expected);
+
+	if (out_filename)
+		*out_filename = filename;
+	else
+		g_free (filename);
+
 }
 
 static void
@@ -1006,6 +1045,98 @@ test_wifi_wowlan_mac_randomization (void)
 }
 
 static void
+test_write_bond_main (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingBond *s_bond;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	NMSettingWired *s_wired;
+	NMIPAddress *addr;
+	GError *error = NULL;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Bond Main",
+	              NM_SETTING_CONNECTION_UUID, "005688e7-ee1d-4ed4-9bfd-a088ba6e80a9",
+	              NM_SETTING_CONNECTION_AUTOCONNECT, TRUE,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "bond0",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_BOND_SETTING_NAME,
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	/* bond setting */
+	s_bond = (NMSettingBond *) nm_setting_bond_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_bond));
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, "active-backup");
+	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, "fast");
+	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIIMON, "80");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIN_LINKS, "1");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY, "layer2+3");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_AD_SELECT, "count");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE, "1");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_INTERVAL, "1");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_IP_TARGET, "192.168.0.1,192.168.0.2");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_VALIDATE, "all");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_ALL_TARGETS, "all");
+	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY, "10");
+	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "5");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_FAIL_OVER_MAC, "active");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_NUM_GRAT_ARP, "2");
+	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, "2");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, "better");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_RESEND_IGMP, "2");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LP_INTERVAL, "2");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, "slave0");
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
+	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
+	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
+	              NULL);
+
+	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip4, addr);
+	nm_ip_address_unref (addr);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
+	              NULL);
+
+	// cannot re-read because of missing slave0 definition
+	_writer_new_connection_no_reread (connection,
+	                                  TEST_SCRATCH_DIR_TMP,
+	                                  &testfile,
+	                                  TEST_NETPLAN_DIR"/exp-bond-main.yaml");
+	/* Manually re-read with added slave (dummy) interfaces, to make the
+	 * netplan parser happy. Explicitly choose the "bond0" netdef. */
+	reread = _connection_from_file (testfile,
+	                                TEST_NETPLAN_DIR"/add-slaves.yaml",
+									"bond0",
+	                                NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
 test_write_modem_gsm_auto_eui64 (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -1364,6 +1495,8 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wifi/write/band-a", test_write_wifi_band_a);
 	g_test_add_func (TPATH "wifi/write/band-bg", test_write_wifi_band_bg);
 	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
+
+	g_test_add_func (TPATH "bond/write/main" , test_write_bond_main);
 
 	g_test_add_func (TPATH "modem/write/gsm-auto-eui64", test_write_modem_gsm_auto_eui64);
 	g_test_add_func (TPATH "modem/write/gsm", test_write_modem_gsm);

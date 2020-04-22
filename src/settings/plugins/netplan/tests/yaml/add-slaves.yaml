@@ -1,0 +1,6 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    slave0: {dhcp4:true}
+    slave1: {dhcp4:true}

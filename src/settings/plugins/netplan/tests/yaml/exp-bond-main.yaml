@@ -1,0 +1,27 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  bonds:
+    bond0:
+      parameters:
+        ad-select: count
+        all-slaves-active: true
+        arp-all-targets: all
+        arp-interval: 1
+        arp-ip-targets: [192.168.0.1,192.168.0.2]
+        arp-validate: all
+        fail-over-mac-policy: active
+        learn-packet-interval: 2
+        min-links: 1
+        mode: active-backup
+        gratuitous-arp: 2
+        primary: slave0
+        primary-reselect-policy: better
+        resend-igmp: 2
+        transmit-hash-policy: layer2+3
+      gateway4: 1.1.1.1
+      addresses: [1.1.1.3/24]
+      networkmanager:
+        name: Test Write Bond Main
+        uuid: 005688e7-ee1d-4ed4-9bfd-a088ba6e80a9
+        device: bond0
