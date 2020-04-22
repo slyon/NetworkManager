@@ -2,8 +2,9 @@
 /* NetworkManager system settings service
  *
  * Mathieu Trudel-Lapierre <mathieu.trudel-lapierre@canonical.com>
+ * Lukas Märdian <lukas.maerdian@canonical.com>
  *
- * Copyright (C) 2019 Canonical Ltd..
+ * Copyright (C) 2019-2020 Canonical Ltd..
  */
 
 #include "nm-default.h"
