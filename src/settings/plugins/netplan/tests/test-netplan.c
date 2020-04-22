@@ -120,7 +120,7 @@ test_write_wired_basic (void)
 	              NULL);
 
 	/* Add generic IP4/6 DHCP settings. */
-	_add_ip_auto_settings (connection, s_ip4, s_ip6);
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 	nmtst_assert_connection_verifies (connection);
 
 	_writer_new_connec_exp (connection,
@@ -409,7 +409,7 @@ test_write_routing_rules (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_wired));
 
 	/* Add generic IP4/6 DHCP settings. */
-	_add_ip_auto_settings (connection, s_ip4, s_ip6);
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 
 	_ip_routing_rule_add_to_setting (s_ip4, "pref 10 from 0.0.0.0/0 table 1");
 	_ip_routing_rule_add_to_setting (s_ip4, "priority 10 to 192.167.8.0/24 table 2");
@@ -595,7 +595,7 @@ test_wifi_wowlan_mac_randomization (void)
 	              NULL);
 
 	/* Add generic IP4/6 DHCP settings. */
-	_add_ip_auto_settings (connection, s_ip4, s_ip6);
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 	nmtst_assert_connection_verifies (connection);
 
 	_writer_new_connection (connection,
@@ -665,7 +665,7 @@ test_write_bond_main (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, "slave0");
 
 	/* Add generic IP4/6 DHCP settings. */
-	_add_ip_auto_settings (connection, s_ip4, s_ip6);
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 
 	// cannot re-read because of missing slave0 definition
 	_writer_new_connection_no_reread (connection,
@@ -723,7 +723,7 @@ test_write_bond_rr (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, "2");
 
 	/* Add generic IP4/6 DHCP settings. */
-	_add_ip_auto_settings (connection, s_ip4, s_ip6);
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 
 	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR_TMP,
@@ -772,7 +772,7 @@ test_write_bond_lacp (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, "fast");
 
 	/* Add generic IP4/6 DHCP settings. */
-	_add_ip_auto_settings (connection, s_ip4, s_ip6);
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 
 	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR_TMP,
@@ -947,7 +947,7 @@ test_write_modem_cdma (void)
 	              NULL);
 
 	/* Add generic IP4/6 DHCP settings. */
-	_add_ip_auto_settings (connection, s_ip4, s_ip6);
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 	nmtst_assert_connection_verifies (connection);
 
 	_writer_new_connection (connection, TEST_SCRATCH_DIR, &testfile);
