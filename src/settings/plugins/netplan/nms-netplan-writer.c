@@ -1496,42 +1496,59 @@ static const struct {
 	const char *option;
 	const char *netplan_name;
 } bond_options_mapping[] = {
+	{ NM_SETTING_BOND_OPTION_MODE, "mode" },
+	{ NM_SETTING_BOND_OPTION_LACP_RATE, "lacp-rate" },
 	{ NM_SETTING_BOND_OPTION_MIIMON, "mii-monitor-interval" },
-	{ NM_SETTING_BOND_OPTION_UPDELAY, "up-delay" },
-	{ NM_SETTING_BOND_OPTION_DOWNDELAY, "down-delay" },
+	{ NM_SETTING_BOND_OPTION_MIN_LINKS, "min-links" },
+	{ NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY, "transmit-hash-policy" },
+	{ NM_SETTING_BOND_OPTION_AD_SELECT, "ad-select" },
+	{ NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE, "all-slaves-active" },
 	{ NM_SETTING_BOND_OPTION_ARP_INTERVAL, "arp-interval" },
 	{ NM_SETTING_BOND_OPTION_ARP_IP_TARGET, "arp-ip-targets" },
 	{ NM_SETTING_BOND_OPTION_ARP_VALIDATE, "arp-validate" },
-	{ NM_SETTING_BOND_OPTION_PRIMARY, "primary-slave" },
-	{ NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, "primary-reselect-policy" },
-	{ NM_SETTING_BOND_OPTION_FAIL_OVER_MAC, "fail-over-mac-policy" },
-//#define NM_SETTING_BOND_OPTION_USE_CARRIER       "use_carrier"
-	{ NM_SETTING_BOND_OPTION_AD_SELECT, "ad-select" },
-	{ NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY, "transmit-hash-policy" },
-	{ NM_SETTING_BOND_OPTION_RESEND_IGMP, "resend-igmp" },
-	{ NM_SETTING_BOND_OPTION_LACP_RATE, "lacp-rate" },
-	{ NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE, "all-slaves-active" },
 	{ NM_SETTING_BOND_OPTION_ARP_ALL_TARGETS, "arp-all-targets" },
-	{ NM_SETTING_BOND_OPTION_MIN_LINKS, "min-links" },
+	{ NM_SETTING_BOND_OPTION_UPDELAY, "up-delay" },
+	{ NM_SETTING_BOND_OPTION_DOWNDELAY, "down-delay" },
+	{ NM_SETTING_BOND_OPTION_FAIL_OVER_MAC, "fail-over-mac-policy" },
 	{ NM_SETTING_BOND_OPTION_NUM_GRAT_ARP, "gratuitous-arp" },
-//#define NM_SETTING_BOND_OPTION_NUM_UNSOL_NA      "num_unsol_na"
 	{ NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, "packets-per-slave" },
-//#define NM_SETTING_BOND_OPTION_TLB_DYNAMIC_LB    "tlb_dynamic_lb"
+	{ NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, "primary-reselect-policy" },
+	{ NM_SETTING_BOND_OPTION_RESEND_IGMP, "resend-igmp" },
 	{ NM_SETTING_BOND_OPTION_LP_INTERVAL, "learn-packet-interval" },
+	{ NM_SETTING_BOND_OPTION_PRIMARY, "primary" },
+	// XXX: Needs to be implemented in netplan
+	//#define NM_SETTING_BOND_OPTION_ACTIVE_SLAVE      "active_slave"
+	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYS_PRIO "ad_actor_sys_prio"
+	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYSTEM   "ad_actor_system"
+	//#define NM_SETTING_BOND_OPTION_AD_USER_PORT_KEY  "ad_user_port_key"
+	//#define NM_SETTING_BOND_OPTION_NUM_UNSOL_NA      "num_unsol_na"
+	//#define NM_SETTING_BOND_OPTION_TLB_DYNAMIC_LB    "tlb_dynamic_lb"
+	//#define NM_SETTING_BOND_OPTION_USE_CARRIER       "use_carrier"
 };
 
 static void
 _match_bond_option_to_netplan (GString *bond_options, const char *option, const char *value)
 {
 	guint i;
-	const char *name = option;
+	const char *name = NULL;
 
 	for (i = 0; i < G_N_ELEMENTS (bond_options_mapping); i++) {
-		if (nm_streq (option, bond_options_mapping[i].option))
+		if (nm_streq (option, bond_options_mapping[i].option)) {
 			name = bond_options_mapping[i].netplan_name;
+			break;
+		}
 	}
 
-	g_string_append_printf (bond_options, "        %s: %s\n", name, value);
+	/* Special handling for non-string/non-uint types. */
+	if (nm_streq (option, NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE))
+		value = nm_streq (value, "1") ? "true" : NULL; //default is false
+	else if (nm_streq (option, NM_SETTING_BOND_OPTION_ARP_IP_TARGET))
+		value = (strlen (value) > 0) ? g_strdup_printf ("[%s]", value) : NULL;
+
+	if (!name)
+		_LOGW("Bond option needs implementation: %s (%s)", option, value);
+	else if (value)
+		g_string_append_printf (bond_options, "        %s: %s\n", name, value);
 }
 
 static gboolean
