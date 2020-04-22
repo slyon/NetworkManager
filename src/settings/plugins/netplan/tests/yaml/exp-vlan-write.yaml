@@ -1,0 +1,14 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  vlans:
+    enred:
+      id: 42
+      link: eno1
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: Test Write VLAN
+        uuid: 0f9f128b-3f77-4ff3-806d-bc1e85621c99
+        device: enred
