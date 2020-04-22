@@ -2238,32 +2238,34 @@ make_bond_setting (NetplanNetDefinition *nd,
 
 	s_bond = NM_SETTING_BOND (nm_setting_bond_new ());
 
-	/* TODO: map the other bond_params fields to NM_SETTING_BOND fields */
-#if 0
-   struct {
-        char* lacp_rate;
-        guint min_links;
-        char* transmit_hash_policy;
-        char* selection_logic;
-        gboolean all_slaves_active;
-        char* arp_validate;
-        char* arp_all_targets;
-        char* fail_over_mac_policy;
-        guint gratuitous_arp;
-        /* TODO: unsolicited_na */
-        guint packets_per_slave;
-        char* primary_reselect_policy;
-        guint resend_igmp;
-        char* learn_interval;
-    } bond_params;
-#endif
-
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, nd->bond_params.mode);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, nd->bond_params.primary_slave);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, nd->bond_params.lacp_rate);
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIIMON, nd->bond_params.monitor_interval);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, nd->bond_params.down_delay);
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY, nd->bond_params.up_delay);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIN_LINKS, g_strdup_printf("%u", nd->bond_params.min_links));
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY, nd->bond_params.transmit_hash_policy);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_AD_SELECT, nd->bond_params.selection_logic);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ALL_SLAVES_ACTIVE, nd->bond_params.all_slaves_active ? "1" : "0");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_INTERVAL, nd->bond_params.arp_interval);
+	//NM_SETTING_BOND_OPTION_ARP_IP_TARGET handled below
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_VALIDATE, nd->bond_params.arp_validate);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_ALL_TARGETS, nd->bond_params.arp_all_targets);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY, nd->bond_params.up_delay);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, nd->bond_params.down_delay);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_FAIL_OVER_MAC, nd->bond_params.fail_over_mac_policy);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_NUM_GRAT_ARP, g_strdup_printf("%u", nd->bond_params.gratuitous_arp));
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, g_strdup_printf("%u", nd->bond_params.packets_per_slave));
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, nd->bond_params.primary_reselect_policy);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_RESEND_IGMP, g_strdup_printf("%u", nd->bond_params.resend_igmp));
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LP_INTERVAL, nd->bond_params.learn_interval);
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, nd->bond_params.primary_slave);
+	// XXX: Needs to be implemented in netplan
+	//#define NM_SETTING_BOND_OPTION_ACTIVE_SLAVE      "active_slave"
+	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYS_PRIO "ad_actor_sys_prio"
+	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYSTEM   "ad_actor_system"
+	//#define NM_SETTING_BOND_OPTION_AD_USER_PORT_KEY  "ad_user_port_key"
+	//#define NM_SETTING_BOND_OPTION_NUM_UNSOL_NA      "num_unsol_na"
+	//#define NM_SETTING_BOND_OPTION_TLB_DYNAMIC_LB    "tlb_dynamic_lb"
+	//#define NM_SETTING_BOND_OPTION_USE_CARRIER       "use_carrier"
 
 	if (nd->bond_params.arp_ip_targets) {
 		char *ip_target;
@@ -2279,7 +2281,6 @@ make_bond_setting (NetplanNetDefinition *nd,
 		nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_IP_TARGET, ip_targets->str);
 		g_string_free (ip_targets, TRUE);
 	}
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, nd->bond_params.lacp_rate);
 
 	return (NMSetting *) s_bond;
 }
@@ -2757,7 +2758,7 @@ netplan_ht_debug (gpointer key,
 static NMConnection *
 connection_from_file_full (const char *filename,
                            const char *network_file,  /* for unit tests only */
-                           const char *test_type,     /* for unit tests only */
+                           const char *netdef_id,     /* for unit tests only */
                            char **out_unhandled,
                            GError **error,
                            gboolean *out_ignore_error)
@@ -2791,9 +2792,10 @@ connection_from_file_full (const char *filename,
 		return NULL;
 	}
 
-	ret = netplan_parse_yaml (filename, error);
-	if (ret && network_file)
+	if (network_file)
 		ret = netplan_parse_yaml (network_file, error);
+	ret = netplan_parse_yaml (filename, error);
+
 	if (ret) {
 		_LOGT ("commit: parse successful");
 		netdefs = netplan_finish_parse (error);
@@ -2897,13 +2899,20 @@ connection_from_file_full (const char *filename,
 		}
 	}
 #endif
-	g_hash_table_iter_init (&iter, netdefs);
-	g_hash_table_iter_next (&iter, &key, (gpointer) &netdef);
+	if (netdef_id) {
+		/* Select netdef specified by ID. */
+		netdef = g_hash_table_lookup (netdefs, netdef_id);
+	} else {
+		/* Select the first netdef from the HashTable,
+		 * if ID is not explicitly asked for. */
+		g_hash_table_iter_init (&iter, netdefs);
+		g_hash_table_iter_next (&iter, &key, (gpointer) &netdef);
+	}
 	if (!netdef) {
 		_LOGE ("invalid netdef");
 		return NULL;
 	}
-	_LOGT ("netplan netdef %s : %d", (char *) key, netdef->type);
+	_LOGT ("Selected netdef %s : %d", netdef_id ? netdef_id : (char *) key, netdef->type);
 
 
 	switch (netdef->type) {
@@ -3030,13 +3039,13 @@ connection_from_file (const char *filename,
 NMConnection *
 nmtst_connection_from_file (const char *filename,
                             const char *network_file,
-                            const char *test_type,
+                            const char *netdef_id,
                             char **out_unhandled,
                             GError **error)
 {
 	return connection_from_file_full (filename,
 	                                  network_file,
-	                                  test_type,
+	                                  netdef_id,
 	                                  out_unhandled,
 	                                  error,
 	                                  NULL);
