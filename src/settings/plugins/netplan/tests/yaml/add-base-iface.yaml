@@ -2,5 +2,4 @@ network:
   version: 2
   renderer: NetworkManager
   ethernets:
-    slave0: {dhcp4:true}
-    slave1: {dhcp4:true}
+    eno1: {dhcp4:true, dhcp6:true}

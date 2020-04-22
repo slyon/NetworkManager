@@ -15,7 +15,7 @@ network:
         min-links: 1
         mode: active-backup
         gratuitous-arp: 2
-        primary: slave0
+        primary: eno1
         primary-reselect-policy: better
         resend-igmp: 2
         transmit-hash-policy: layer2+3

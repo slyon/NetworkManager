@@ -614,6 +614,63 @@ test_wifi_wowlan_mac_randomization (void)
 }
 
 static void
+test_write_vlan (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingVlan *s_vlan;
+	NMSettingWired *s_wired;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write VLAN",
+	              NM_SETTING_CONNECTION_UUID, "0f9f128b-3f77-4ff3-806d-bc1e85621c99",
+	              //NM_SETTING_CONNECTION_AUTOCONNECT, FALSE, // Not implemented by netplan
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_VLAN_SETTING_NAME,
+				  NM_SETTING_CONNECTION_INTERFACE_NAME, "enred",
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	/* VLAN setting */
+	s_vlan = (NMSettingVlan *) nm_setting_vlan_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_vlan));
+	g_object_set (s_vlan,
+	              NM_SETTING_VLAN_PARENT, "eno1",
+	              NM_SETTING_VLAN_ID, 42,
+	              //NM_SETTING_VLAN_FLAGS, 1, // XXX: Needs to be implemented in netplan
+	              NULL);
+
+	/* Add generic IP4/6 DHCP settings. */
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
+
+	// cannot re-read because of missing eno1 definition
+	_writer_new_connection_no_reread (connection,
+	                                  TEST_SCRATCH_DIR_TMP,
+	                                  &testfile,
+	                                  TEST_NETPLAN_DIR"/exp-vlan-write.yaml");
+	/* Manually re-read with added base (dummy) interfaces, to make the
+	 * netplan parser happy. Explicitly choose the "enred" netdef. */
+	reread = _connection_from_file (testfile,
+	                                TEST_NETPLAN_DIR"/add-base-iface.yaml",
+									"enred",
+	                                NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
 test_write_bond_main (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -662,7 +719,7 @@ test_write_bond_main (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, "better");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_RESEND_IGMP, "2");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LP_INTERVAL, "2");
-	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, "slave0");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY, "eno1");
 
 	/* Add generic IP4/6 DHCP settings. */
 	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
@@ -675,7 +732,7 @@ test_write_bond_main (void)
 	/* Manually re-read with added slave (dummy) interfaces, to make the
 	 * netplan parser happy. Explicitly choose the "bond0" netdef. */
 	reread = _connection_from_file (testfile,
-	                                TEST_NETPLAN_DIR"/add-slaves.yaml",
+	                                TEST_NETPLAN_DIR"/add-base-iface.yaml",
 									"bond0",
 	                                NULL);
 
@@ -1131,6 +1188,8 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wifi/write/band-a", test_write_wifi_band_a);
 	g_test_add_func (TPATH "wifi/write/band-bg", test_write_wifi_band_bg);
 	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
+
+	g_test_add_func (TPATH "vlan/write/main" , test_write_vlan);
 
 	g_test_add_func (TPATH "bond/write/main" , test_write_bond_main);
 	g_test_add_func (TPATH "bond/write/rr" , test_write_bond_rr);

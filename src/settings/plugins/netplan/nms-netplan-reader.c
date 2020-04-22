@@ -2521,8 +2521,7 @@ make_team_port_setting (NetplanNetDefinition *nd)
 }
 #endif
 
-
-#if 0   /* TODO: VLAN Support */
+#if 0   /* TODO: Advanced VLAN */
 static void
 parse_prio_map_list (NMSettingVlan *s_vlan,
                      NetplanNetDefinition *nd,
@@ -2546,6 +2545,7 @@ parse_prio_map_list (NMSettingVlan *s_vlan,
 			PARSE_WARNING ("invalid %s priority map item '%s'", key, *iter);
 	}
 }
+#endif
 
 static NMSetting *
 make_vlan_setting (NetplanNetDefinition *nd,
@@ -2553,118 +2553,28 @@ make_vlan_setting (NetplanNetDefinition *nd,
                    GError **error)
 {
 	gs_unref_object NMSettingVlan *s_vlan = NULL;
-	gs_free char *parent = NULL;
-	gs_free char *iface_name = NULL;
-	gs_free char *value = NULL;
-	const char *v = NULL;
-	int vlan_id = -1;
-	guint32 vlan_flags = 0;
-	int gvrp, reorder_hdr;
-
-	v = svGetValueStr (netplan, "VLAN_ID", &value);
-	if (v) {
-		vlan_id = _nm_utils_ascii_str_to_int64 (v, 10, 0, 4095, -1);
-		if (vlan_id == -1) {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "Invalid VLAN_ID '%s'", v);
-			return NULL;
-		}
-	}
-
-	/* Need DEVICE if we don't have a separate VLAN_ID property */
-	iface_name = svGetValueStr_cp (netplan, "DEVICE");
-	if (!iface_name && vlan_id < 0) {
-		g_set_error_literal (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-		                     "Missing DEVICE property; cannot determine VLAN ID.");
-		return NULL;
-	}
-
+	//guint32 vlan_flags = 0;
 	s_vlan = NM_SETTING_VLAN (nm_setting_vlan_new ());
 
-	/* Parent interface from PHYSDEV takes precedence if it exists */
-	parent = svGetValueStr_cp (netplan, "PHYSDEV");
-
-	if (iface_name) {
-		v = strchr (iface_name, '.');
-		if (v) {
-			/* eth0.43; PHYSDEV is assumed from it if unknown */
-			if (!parent) {
-				parent = g_strndup (iface_name, v - iface_name);
-				if (g_str_has_prefix (parent, "vlan")) {
-					/* Like initscripts, if no PHYSDEV and we get an obviously
-					 * invalid parent interface from DEVICE, fail.
-					 */
-					nm_clear_g_free (&parent);
-				}
-			}
-			v++;
-		} else {
-			/* format like vlan43; PHYSDEV must be set */
-			if (g_str_has_prefix (iface_name, "vlan"))
-				v = iface_name + 4;
-		}
-
-		if (v) {
-			int device_vlan_id;
-
-			/* Grab VLAN ID from interface name; this takes precedence over the
-			 * separate VLAN_ID property for backwards compat.
-			 */
-			device_vlan_id = _nm_utils_ascii_str_to_int64 (v, 10, 0, 4095, -1);
-			if (device_vlan_id != -1)
-				vlan_id = device_vlan_id;
-		}
-	}
-
-	if (vlan_id < 0) {
+	/* Netplan initializes the ID to G_MAXUINT, as 0 is a valid VLAN ID */
+	if (nd->vlan_id > 4094) {
 		g_set_error_literal (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-		                     "Failed to determine VLAN ID from DEVICE or VLAN_ID.");
+		                     "Failed to determine VLAN ID (id) from netplan");
 		return NULL;
 	}
-	g_object_set (s_vlan, NM_SETTING_VLAN_ID, vlan_id, NULL);
+	g_object_set (s_vlan, NM_SETTING_VLAN_ID, nd->vlan_id, NULL);
 
-	if (parent == NULL) {
+	if (!nd->vlan_link) {
 		g_set_error_literal (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-		                     "Failed to determine VLAN parent from DEVICE or PHYSDEV");
+		                     "Failed to determine VLAN parent (link) from netplan");
 		return NULL;
 	}
-	g_object_set (s_vlan, NM_SETTING_VLAN_PARENT, parent, NULL);
+	g_object_set (s_vlan, NM_SETTING_VLAN_PARENT, nd->vlan_link->id, NULL);
 
+	/* TODO: VLAN flags need to be implemented in netplan
 	vlan_flags |= NM_VLAN_FLAG_REORDER_HEADERS;
-
-	gvrp = svGetValueBoolean (netplan, "GVRP", -1);
-	if (gvrp > 0)
-		vlan_flags |= NM_VLAN_FLAG_GVRP;
-
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "VLAN_FLAGS", &value);
-	if (v) {
-		gs_free const char **strv = NULL;
-		const char *const *ptr;
-
-		strv = nm_utils_strsplit_set (v, ", ");
-		for (ptr = strv; ptr && *ptr; ptr++) {
-			if (nm_streq (*ptr, "GVRP") && gvrp == -1)
-				vlan_flags |= NM_VLAN_FLAG_GVRP;
-			if (nm_streq (*ptr, "LOOSE_BINDING"))
-				vlan_flags |=  NM_VLAN_FLAG_LOOSE_BINDING;
-			if (nm_streq (*ptr, "NO_REORDER_HDR"))
-				vlan_flags &= ~NM_VLAN_FLAG_REORDER_HEADERS;
-		}
-	}
-
-	reorder_hdr = svGetValueBoolean (netplan, "REORDER_HDR", -1);
-	if (   reorder_hdr != -1
-	    && reorder_hdr != NM_FLAGS_HAS (vlan_flags, NM_VLAN_FLAG_REORDER_HEADERS))
-		PARSE_WARNING ("REORDER_HDR key is deprecated, use VLAN_FLAGS");
-
-	if (svGetValueBoolean (netplan, "MVRP", FALSE))
-		vlan_flags |= NM_VLAN_FLAG_MVRP;
-
 	g_object_set (s_vlan, NM_SETTING_VLAN_FLAGS, vlan_flags, NULL);
-
-	parse_prio_map_list (s_vlan, netplan, "VLAN_INGRESS_PRIORITY_MAP", NM_VLAN_INGRESS_MAP);
-	parse_prio_map_list (s_vlan, netplan, "VLAN_EGRESS_PRIORITY_MAP", NM_VLAN_EGRESS_MAP);
+	*/
 
 	return NM_SETTING (g_steal_pointer (&s_vlan));
 }
@@ -2682,7 +2592,7 @@ vlan_connection_from_netplan (const char *file,
 	GError *local = NULL;
 
 	g_return_val_if_fail (file != NULL, NULL);
-	g_return_val_if_fail (netplan != NULL, NULL);
+	g_return_val_if_fail (nd != NULL, NULL);
 
 	connection = nm_simple_connection_new ();
 
@@ -2718,7 +2628,6 @@ vlan_connection_from_netplan (const char *file,
 
 	return connection;
 }
-#endif
 
 static NMConnection *
 create_unhandled_connection (const char *filename, NetplanNetDefinition *nd,
@@ -2959,11 +2868,9 @@ connection_from_file_full (const char *filename,
 	case NETPLAN_DEF_TYPE_BOND:
 		connection = bond_connection_from_netplan (filename, netdef, error);
 		break;
-#if 0  /* skip for now... */
 	case NETPLAN_DEF_TYPE_VLAN:
 		connection = vlan_connection_from_netplan (filename, netdef, error);
 		break;
-#endif
 #if 0  /* not yet implemented */
 	case NETPLAN_DEF_TYPE_INFINIBAND:
 		connection = infiniband_connection_from_netplan (filename, netdef, error);
