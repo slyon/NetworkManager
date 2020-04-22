@@ -1080,8 +1080,6 @@ test_write_bond_main (void)
 	s_bond = (NMSettingBond *) nm_setting_bond_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_bond));
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, "active-backup");
-	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, "fast");
-	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIIMON, "80");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIN_LINKS, "1");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_XMIT_HASH_POLICY, "layer2+3");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_AD_SELECT, "count");
@@ -1090,11 +1088,8 @@ test_write_bond_main (void)
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_IP_TARGET, "192.168.0.1,192.168.0.2");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_VALIDATE, "all");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_ARP_ALL_TARGETS, "all");
-	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY, "10");
-	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "5");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_FAIL_OVER_MAC, "active");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_NUM_GRAT_ARP, "2");
-	//nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, "2");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY_RESELECT, "better");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_RESEND_IGMP, "2");
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LP_INTERVAL, "2");
@@ -1135,6 +1130,144 @@ test_write_bond_main (void)
 
 	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
+
+static void
+test_write_bond_rr (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingBond *s_bond;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	NMSettingWired *s_wired;
+	NMIPAddress *addr;
+	GError *error = NULL;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Bond RR",
+	              NM_SETTING_CONNECTION_UUID, "005688e7-ee1d-4ed4-9bfd-a088ba6e80a9",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "bond-rr",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_BOND_SETTING_NAME,
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	/* bond setting */
+	s_bond = (NMSettingBond *) nm_setting_bond_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_bond));
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, "balance-rr");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MIIMON, "80");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_UPDELAY, "10");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_DOWNDELAY, "5");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PACKETS_PER_SLAVE, "2");
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
+	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
+	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
+	              NULL);
+
+	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip4, addr);
+	nm_ip_address_unref (addr);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
+	              NULL);
+
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR_TMP,
+	                        TEST_NETPLAN_DIR"/exp-bond-rr.yaml",
+	                        &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
+test_write_bond_lacp (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingBond *s_bond;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	NMSettingWired *s_wired;
+	NMIPAddress *addr;
+	GError *error = NULL;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Bond LACP",
+	              NM_SETTING_CONNECTION_UUID, "005688e7-ee1d-4ed4-9bfd-a088ba6e80a9",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "bond-lacp",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_BOND_SETTING_NAME,
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	/* bond setting */
+	s_bond = (NMSettingBond *) nm_setting_bond_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_bond));
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_MODE, "802.3ad");
+	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_LACP_RATE, "fast");
+
+	/* IP4 setting */
+	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip4));
+	g_object_set (s_ip4,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP4_CONFIG_METHOD_MANUAL,
+	              NM_SETTING_IP_CONFIG_GATEWAY, "1.1.1.1",
+	              NM_SETTING_IP_CONFIG_MAY_FAIL, TRUE,
+	              NULL);
+
+	addr = nm_ip_address_new (AF_INET, "1.1.1.3", 24, &error);
+	g_assert_no_error (error);
+	nm_setting_ip_config_add_address (s_ip4, addr);
+	nm_ip_address_unref (addr);
+
+	/* IP6 setting */
+	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_ip6));
+	g_object_set (s_ip6,
+	              NM_SETTING_IP_CONFIG_METHOD, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
+	              NULL);
+
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR_TMP,
+	                        TEST_NETPLAN_DIR"/exp-bond-lacp.yaml",
+	                        &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
 
 static void
 test_write_modem_gsm_auto_eui64 (void)
@@ -1497,6 +1630,8 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
 
 	g_test_add_func (TPATH "bond/write/main" , test_write_bond_main);
+	g_test_add_func (TPATH "bond/write/rr" , test_write_bond_rr);
+	g_test_add_func (TPATH "bond/write/lacp" , test_write_bond_lacp);
 
 	g_test_add_func (TPATH "modem/write/gsm-auto-eui64", test_write_modem_gsm_auto_eui64);
 	g_test_add_func (TPATH "modem/write/gsm", test_write_modem_gsm);
