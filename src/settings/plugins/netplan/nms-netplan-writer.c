@@ -2497,6 +2497,9 @@ write_ip4_setting (NMConnection *connection,
 	//gboolean has_netmask;
 
 	s_ip4 = nm_connection_get_setting_ip4_config (connection);
+	if (!s_ip4)
+		return TRUE;
+
 	method = nm_setting_ip_config_get_method (s_ip4);
 
 	/* Missing IP4 setting is assumed to be DHCP */
@@ -2713,9 +2716,8 @@ write_ip6_setting (NMConnection *connection,
 	NMSettingIP6ConfigAddrGenMode addr_gen_mode;
 
 	s_ip6 = nm_connection_get_setting_ip6_config (connection);
-	if (!s_ip6) {
+	if (!s_ip6)
 		return TRUE;
-	}
 
 	gateway = nm_setting_ip_config_get_gateway (s_ip6);
 	if (gateway)
@@ -3054,9 +3056,6 @@ do_write_construct (NMConnection *connection,
 
 	//if (!write_tc_setting (connection, netplan, error))
 	//	return FALSE;
-
-	//s_ip4 = nm_connection_get_setting_ip4_config (connection);
-	//s_ip6 = nm_connection_get_setting_ip6_config (connection);
 
 	if (!write_ip4_setting (connection,
 	                        netplan,
