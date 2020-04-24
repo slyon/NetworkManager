@@ -1786,7 +1786,9 @@ write_bridge_setting (NMConnection *connection, GOutputStream *netplan, GError *
 static gboolean
 write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-	// TODO: Probably needs reorg in netplan to support in member device bond/bridge params.
+	/* XXX: Might need reorg in netplan to support in member device bond/bridge params.
+	 *   We need to make sure bridge-port params do not get overwritten in netplan, when
+	 *   multiple YAML files are read, which define the same bridge master ID. */
 	NMSettingBridgePort *s_port;
 	NMSettingConnection *s_con;
 	guint32 i;
