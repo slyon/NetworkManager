@@ -137,23 +137,18 @@ _cert_set_from_netplan (gpointer setting,
 
 /*****************************************************************************/
 
-#if 0
 static void
 check_if_bond_slave (NetplanNetDefinition *nd,
                      NMSettingConnection *s_con)
 {
-	gs_free char *value = NULL;
 	const char *v;
 	const char *master;
 
-	v = svGetValueStr (netplan, "MASTER_UUID", &value);
-	if (!v)
-		v = svGetValueStr (netplan, "MASTER", &value);
-
+	v = nd->bond;
 	if (v) {
 		master = nm_setting_connection_get_master (s_con);
 		if (master) {
-			PARSE_WARNING ("Already configured as slave of %s. Ignoring MASTER{_UUID}=\"%s\"",
+			PARSE_WARNING ("Already configured as slave of %s. Ignoring master \"%s\"",
 			               master, v);
 			return;
 		}
@@ -163,12 +158,7 @@ check_if_bond_slave (NetplanNetDefinition *nd,
 		              NM_SETTING_CONNECTION_SLAVE_TYPE, NM_SETTING_BOND_SETTING_NAME,
 		              NULL);
 	}
-
-	/* We should be checking for SLAVE=yes as well, but NM used to not set that,
-	 * so for backward-compatibility, we don't check.
-	 */
 }
-#endif
 
 #if 0  /* TODO: Implement (read) Team support  */
 static void
@@ -352,28 +342,23 @@ make_connection_setting (const char *file,
 	nm_clear_g_free (&value);
 #endif
 
-#if 0  /* TODO: Bridge UUIDs??? */
-	v = svGetValueStr (netplan, "BRIDGE_UUID", &value);
-	if (!v)
-		v = svGetValueStr (netplan, "BRIDGE", &value);
+	v = nd->bridge;
 	if (v) {
 		const char *old_value;
 
 		if ((old_value = nm_setting_connection_get_master (s_con))) {
-			PARSE_WARNING ("Already configured as slave of %s. Ignoring BRIDGE=\"%s\"",
+			PARSE_WARNING ("Already configured as slave of %s. Ignoring master \"%s\"",
 			               old_value, v);
 		} else {
-			g_object_set (s_con, NM_SETTING_CONNECTION_MASTER, v, NULL);
-			g_object_set (s_con, NM_SETTING_CONNECTION_SLAVE_TYPE,
-			              NM_SETTING_BRIDGE_SETTING_NAME, NULL);
+			g_object_set (s_con,
+			              NM_SETTING_CONNECTION_SLAVE_TYPE, NM_SETTING_BRIDGE_SETTING_NAME,
+			              NM_SETTING_CONNECTION_MASTER, v,
+			              NULL);
 		}
 	}
 
-	check_if_bond_slave (netplan, s_con);
-	check_if_team_slave (netplan, s_con);
-
-	nm_clear_g_free (&value);
-#endif
+	check_if_bond_slave (nd, s_con);
+	//check_if_team_slave (nd, s_con);
 
 #if 0  /* TODO: OVS support */
 	v = svGetValueStr (netplan, "OVS_PORT_UUID", &value);
@@ -2396,19 +2381,19 @@ make_bridge_setting (NetplanNetDefinition *nd,
 			g_object_set (s_bridge, NM_SETTING_BRIDGE_MAX_AGE,
 			              _nm_utils_ascii_str_to_int64 (nd->bridge_params.max_age, 10, 0, G_MAXUINT, -1),
 			              NULL);
-	}
 
-	//g_object_set (s_bridge, NM_SETTING_BRIDGE_PORT_PRIORITY, nd->bridge_params.port_priority, NULL);
-	//g_object_set (s_bridge, NM_SETTING_BRIDGE_PORT_PATH_COST, nd->bridge_params.path_cost, NULL);
+		if (nd->bridge_params.ageing_time)
+			g_object_set (s_bridge, NM_SETTING_BRIDGE_AGEING_TIME,
+			              _nm_utils_ascii_str_to_int64 (nd->bridge_params.ageing_time, 10, 0, G_MAXUINT, -1),
+			              NULL);
+	}
 	
 #if 0  /* TODO: add the other bridge params */
-	g_object_set (s_bridge, NM_SETTING_BRIDGE_AGEING_TIME, nd->bridge_params.stp, NULL);
 	g_object_set (s_bridge, NM_SETTING_BRIDGE_MULTICAST_SNOOPING, nd->bridge_params.stp, NULL);
 	g_object_set (s_bridge, NM_SETTING_BRIDGE_VLAN_FILTERING, nd->bridge_params.stp, NULL);
 	g_object_set (s_bridge, NM_SETTING_BRIDGE_VLAN_DEFAULT_PVID, nd->bridge_params.stp, NULL);
 	g_object_set (s_bridge, NM_SETTING_BRIDGE_GROUP_FORWARD_MASK, nd->bridge_params.stp, NULL);
 	g_object_set (s_bridge, NM_SETTING_BRIDGE_VLAN_DEFAULT_PVID, nd->bridge_params.stp, NULL);
-	g_object_set (s_bridge, NM_SETTING_BRIDGE_PORT_HAIRPIN_MODE, nd->bridge_params.stp, NULL);
 #endif
 
 	return (NMSetting *) g_steal_pointer (&s_bridge);
@@ -2468,38 +2453,37 @@ bridge_connection_from_netplan (const char *file,
 	return connection;
 }
 
-#if 0  /* TODO: bridge-port settings */
 static NMSetting *
 make_bridge_port_setting (NetplanNetDefinition *nd)
 {
 	NMSetting *s_port = NULL;
-	gs_free char *value_to_free = NULL;
-	const char *value;
+	g_return_val_if_fail (nd != NULL, FALSE);
 
-	g_return_val_if_fail (netplan != NULL, FALSE);
+	if (!nd->bridge)
+		return NULL;
 
-	value = svGetValueStr (netplan, "BRIDGE_UUID", &value_to_free);
-	if (!value)
-		value = svGetValueStr (netplan, "BRIDGE", &value_to_free);
-	if (value) {
-		nm_clear_g_free (&value_to_free);
+	s_port = nm_setting_bridge_port_new ();
 
-		s_port = nm_setting_bridge_port_new ();
-		value = svGetValueStr (netplan, "BRIDGING_OPTS", &value_to_free);
-		if (value) {
-			handle_bridging_opts (s_port, FALSE, value, handle_bridge_option, BRIDGE_OPT_TYPE_PORT_OPTION);
-			nm_clear_g_free (&value_to_free);
-		}
+	if (nd->bridge_params.path_cost)
+		g_object_set (s_port, NM_SETTING_BRIDGE_PORT_PATH_COST,
+		              nd->bridge_params.path_cost, NULL);
 
-		read_bridge_vlans (netplan,
-		                   "BRIDGE_PORT_VLANS",
-		                   s_port,
-		                   NM_SETTING_BRIDGE_PORT_VLANS);
-	}
+	if (nd->bridge_params.port_priority)
+		g_object_set (s_port, NM_SETTING_BRIDGE_PORT_PRIORITY,
+		              nd->bridge_params.port_priority, NULL);
+
+#if 0 /* TODO: bridge-port vlans need to be implemented in netplan */
+	read_bridge_vlans (netplan,
+	                   "BRIDGE_PORT_VLANS",
+	                   s_port,
+	                   NM_SETTING_BRIDGE_PORT_VLANS);
+
+	/* TODO: additional bridge-port settings */
+	//g_object_set (s_bridge, NM_SETTING_BRIDGE_PORT_HAIRPIN_MODE, nd->bridge_params.stp, NULL);
+#endif
 
 	return s_port;
 }
-#endif
 
 #if 0  /* TODO: Team device support */
 static NMSetting *
@@ -2705,8 +2689,8 @@ connection_from_file_full (const char *filename,
 	gs_free char *type = NULL;
 	//char *devtype, *bootproto;
 	NMSetting *s_ip4, *s_ip6;
-	//NMSetting *s_tc, *s_proxy, *s_port, *s_dcb = NULL, *s_user, *s_sriov;
-	NMSetting *s_match;
+	//NMSetting *s_tc, *s_proxy, *s_dcb = NULL, *s_user, *s_sriov;
+	NMSetting *s_match, *s_port;
 	const char *netplan_name = NULL;
 	gboolean ret;
 	GHashTableIter iter;
@@ -2906,13 +2890,17 @@ connection_from_file_full (const char *filename,
 	s_ip4 = make_ip4_setting (netdef, error);
 	if (!s_ip4)
 		return NULL;
-
 	nm_connection_add_setting (connection, s_ip4);
 	_LOGT ("netplan conn %p : %s", connection, nm_connection_get_uuid(connection));
 
 	s_match = make_match_setting (netdef);
 	if (s_match)
 		nm_connection_add_setting (connection, s_match);
+	_LOGT ("netplan conn %p : %s", connection, nm_connection_get_uuid(connection));
+
+	s_port = make_bridge_port_setting (netdef);
+	if (s_port)
+		nm_connection_add_setting (connection, s_port);
 	_LOGT ("netplan conn %p : %s", connection, nm_connection_get_uuid(connection));
 
 	if (netdef->ip_rules)
@@ -2936,10 +2924,6 @@ connection_from_file_full (const char *filename,
 	s_user = make_user_setting (main_netplan);
 	if (s_user)
 		nm_connection_add_setting (connection, s_user);
-
-	s_port = make_bridge_port_setting (main_netplan);
-	if (s_port)
-		nm_connection_add_setting (connection, s_port);
 
 	s_port = make_team_port_setting (main_netplan);
 	if (s_port)
