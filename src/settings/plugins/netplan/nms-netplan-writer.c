@@ -1788,25 +1788,33 @@ write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GEr
 {
 	// TODO: Probably needs reorg in netplan to support in member device bond/bridge params.
 	NMSettingBridgePort *s_port;
+	NMSettingConnection *s_con;
 	guint32 i;
 	GString *string;
+	const char *master, *iface;
 
+	s_con = nm_connection_get_setting_connection (connection);
 	s_port = nm_connection_get_setting_bridge_port (connection);
 	if (!s_port)
 		return TRUE;
+
+	iface = nm_setting_connection_get_interface_name (s_con);
+	if (!iface) {
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+		             "Missing '%s' setting", NM_SETTING_CONNECTION_INTERFACE_NAME);
+		return FALSE;
+	}
 
 	/* Bridge options */
 	string = g_string_sized_new (32);
 
 	i = nm_setting_bridge_port_get_priority (s_port);
 	if (i != get_setting_default_uint (NM_SETTING (s_port), NM_SETTING_BRIDGE_PORT_PRIORITY))
-		g_string_append_printf (string, "        priority: %u", i);
+		g_string_append_printf (string, "        port-priority:\n          %s: %u\n", iface, i);
 
 	i = nm_setting_bridge_port_get_path_cost (s_port);
 	if (i != get_setting_default_uint (NM_SETTING (s_port), NM_SETTING_BRIDGE_PORT_PATH_COST)) {
-		if (string->len)
-			g_string_append_c (string, ' ');
-		g_string_append_printf (string, "        path-cost: %u", i);
+		g_string_append_printf (string, "        path-cost:\n          %s: %u\n", iface, i);
 	}
 
 #if 0 // TODO: need hairpin mode support in networkd/netplan
@@ -1817,9 +1825,18 @@ write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GEr
 	}
 #endif
 
-	if (string->len)
+	master = nm_setting_connection_get_master (s_con);
+	if (!master) {
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+		             "Missing '%s' setting", NM_SETTING_CONNECTION_MASTER);
+		return FALSE;
+	}
+
+	if (string->len) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      parameters:\n%s", string->str);
+		                        "  bridges:\n    %s:\n      interfaces: [%s]\n      parameters:\n%s",
+		                        master, iface, string->str);
+	}
 	g_string_free (string, TRUE);
 
 	if (!write_bridge_vlans ((NMSetting *) s_port,
@@ -3031,9 +3048,6 @@ do_write_construct (NMConnection *connection,
 		return FALSE;
 	}
 
-	if (!write_bridge_port_setting (connection, netplan, error))
-		return FALSE;
-
 	//if (!write_team_port_setting (connection, netplan, error))
 	//	return FALSE;
 
@@ -3145,6 +3159,15 @@ do_write_construct (NMConnection *connection,
 	write_ip_routing_rules (connection, netplan);
 
 	write_connection_setting (s_con, netplan);
+
+	/**
+	 * Write bridge-port settings, by adding the master bridge interface
+	 * to the YAML. It will be merged with its own YAML definition, when
+	 * the YAML files are read and combined/merged.
+	 * This adds a new "bridges:" section to the YAML, so this code needs
+	 * to run after all settings for the current netdef have been written. */
+	if (!write_bridge_port_setting (connection, netplan, error))
+		return FALSE;
 
 	//NM_SET_OUT (out_netplan, g_steal_pointer (&netplan));
 	return TRUE;
@@ -3310,7 +3333,7 @@ nms_netplan_writer_can_write_connection (NMConnection *connection, GError **erro
 	                  NM_SETTING_GSM_SETTING_NAME,
 	                  NM_SETTING_CDMA_SETTING_NAME,
 	                  NM_SETTING_BOND_SETTING_NAME,
-	                  NM_SETTING_TEAM_SETTING_NAME,
+	                  //NM_SETTING_TEAM_SETTING_NAME,
 	                  NM_SETTING_BRIDGE_SETTING_NAME))
 		return TRUE;
 	if (nm_streq0 (type, NM_SETTING_WIRED_SETTING_NAME)

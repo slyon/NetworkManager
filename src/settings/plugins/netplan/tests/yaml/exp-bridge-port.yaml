@@ -1,0 +1,17 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    slave0:
+      networkmanager:
+        name: Test Write Bridge Port
+        uuid: d146971d-c5f4-4452-95f7-b8e9b9e4e310
+        device: slave0
+  bridges:
+    br0:
+      interfaces: [slave0]
+      parameters:
+        port-priority:
+          slave0: 50
+        path-cost:
+          slave0: 33

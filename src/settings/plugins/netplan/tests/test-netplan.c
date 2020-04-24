@@ -614,6 +614,165 @@ test_wifi_wowlan_mac_randomization (void)
 }
 
 static void
+test_write_bridge_main (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingBridge *s_bridge;
+	NMSettingIPConfig *s_ip4, *s_ip6;
+	NMSettingWired *s_wired;
+	NMIPAddress *addr;
+	static const char *mac = "31:33:33:37:be:cd";
+	GError *error = NULL;
+	gs_unref_ptrarray GPtrArray *vlans = NULL;
+	NMBridgeVlan *vlan;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+	g_assert (connection);
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Bridge Main",
+	              NM_SETTING_CONNECTION_UUID, "965e4838-253f-4291-9eda-6bb46cd4b6c8",
+	              NM_SETTING_CONNECTION_AUTOCONNECT, TRUE,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "br0",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_BRIDGE_SETTING_NAME,
+	              NULL);
+
+	/* bridge setting */
+	s_bridge = (NMSettingBridge *) nm_setting_bridge_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_bridge));
+
+	/* XXX: Needs to be implemented in netplan
+	vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
+	vlan = nm_bridge_vlan_new (10, 16);
+	nm_bridge_vlan_set_untagged (vlan, TRUE);
+	g_ptr_array_add (vlans, vlan);
+	vlan = nm_bridge_vlan_new (22, 22);
+	nm_bridge_vlan_set_pvid (vlan, TRUE);
+	nm_bridge_vlan_set_untagged (vlan, TRUE);
+	g_ptr_array_add (vlans, vlan);
+	vlan = nm_bridge_vlan_new (44, 0);
+	g_ptr_array_add (vlans, vlan);
+	*/
+
+	g_object_set (s_bridge,
+	              NM_SETTING_BRIDGE_MAC_ADDRESS, mac,
+	              NM_SETTING_BRIDGE_AGEING_TIME, 100,
+	              NM_SETTING_BRIDGE_PRIORITY, 1024,
+	              //NM_SETTING_BRIDGE_PORT_PRIORITY, 1,
+	              NM_SETTING_BRIDGE_FORWARD_DELAY, 10,
+	              NM_SETTING_BRIDGE_HELLO_TIME, 5,
+	              NM_SETTING_BRIDGE_MAX_AGE, 10,
+	              //NM_SETTING_BRIDGE_PORT_PATH_COST, 1,
+	              NM_SETTING_BRIDGE_STP, TRUE,
+	              /* XXX: Needs to be implemented in netplan
+	              NM_SETTING_BRIDGE_GROUP_FORWARD_MASK, 19008,
+	              NM_SETTING_BRIDGE_VLAN_FILTERING, TRUE,
+	              NM_SETTING_BRIDGE_VLAN_DEFAULT_PVID, 4000,
+	              NM_SETTING_BRIDGE_VLANS, vlans,
+	              */
+	              NULL);
+
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+
+	nm_connection_add_setting (connection, nm_setting_proxy_new ());
+	nmtst_assert_connection_verifies_without_normalization (connection);
+
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR_TMP,
+							TEST_NETPLAN_DIR"/exp-bridge-main.yaml",
+	                        &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
+test_write_bridge_port (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWired *s_wired;
+	NMSetting *s_port;
+	static const char *mac = "de:ad:be:ef:ca:fe";
+	//gs_unref_ptrarray GPtrArray *vlans = NULL;
+	//NMBridgeVlan *vlan;
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+	g_assert (connection);
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Bridge Port",
+	              NM_SETTING_CONNECTION_UUID, "d146971d-c5f4-4452-95f7-b8e9b9e4e310",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRED_SETTING_NAME,
+	              NM_SETTING_CONNECTION_MASTER, "br0",
+	              NM_SETTING_CONNECTION_SLAVE_TYPE, NM_SETTING_BRIDGE_SETTING_NAME,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "slave0",
+	              NULL);
+
+	/* Wired setting */
+	s_wired = (NMSettingWired *) nm_setting_wired_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wired));
+	g_object_set (s_wired,
+	              //NM_SETTING_WIRED_MAC_ADDRESS, mac,
+	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_NONE,
+	              NULL);
+
+	/* TODO: Needs to be implemented in netplan
+	vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
+	vlan = nm_bridge_vlan_new (1, 0);
+	nm_bridge_vlan_set_untagged (vlan, TRUE);
+	g_ptr_array_add (vlans, vlan);
+	vlan = nm_bridge_vlan_new (4, 4094);
+	nm_bridge_vlan_set_untagged (vlan, TRUE);
+	g_ptr_array_add (vlans, vlan);
+	vlan = nm_bridge_vlan_new (2, 2);
+	nm_bridge_vlan_set_pvid (vlan, TRUE);
+	g_ptr_array_add (vlans, vlan);
+	*/
+
+	/* Bridge port */
+	s_port = nm_setting_bridge_port_new ();
+	nm_connection_add_setting (connection, s_port);
+	g_object_set (s_port,
+	              NM_SETTING_BRIDGE_PORT_PRIORITY, 50,
+	              NM_SETTING_BRIDGE_PORT_PATH_COST, 33,
+	              //NM_SETTING_BRIDGE_PORT_VLANS, vlans, // XXX: Not implemented in netplan
+	              NULL);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection_no_reread (connection,
+	                                  TEST_SCRATCH_DIR_TMP,
+	                                  &testfile,
+	                                  TEST_NETPLAN_DIR"/exp-bridge-port.yaml");
+	/* Manually re-read with added (dummy) bridge iface, to make the
+	 * netplan parser happy. Explicitly choose the "slave0" netdef. */
+	reread = _connection_from_file (testfile,
+	                                TEST_NETPLAN_DIR"/add-bridge.yaml",
+									"slave0",
+	                                NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
 test_write_vlan (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -1189,11 +1348,14 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wifi/write/band-bg", test_write_wifi_band_bg);
 	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
 
-	g_test_add_func (TPATH "vlan/write/main" , test_write_vlan);
+	g_test_add_func (TPATH "bridge/write/main", test_write_bridge_main);
+	g_test_add_func (TPATH "bridge/write/port", test_write_bridge_port);
 
-	g_test_add_func (TPATH "bond/write/main" , test_write_bond_main);
-	g_test_add_func (TPATH "bond/write/rr" , test_write_bond_rr);
-	g_test_add_func (TPATH "bond/write/lacp" , test_write_bond_lacp);
+	g_test_add_func (TPATH "vlan/write/main", test_write_vlan);
+
+	g_test_add_func (TPATH "bond/write/main", test_write_bond_main);
+	g_test_add_func (TPATH "bond/write/rr", test_write_bond_rr);
+	g_test_add_func (TPATH "bond/write/lacp", test_write_bond_lacp);
 
 	g_test_add_func (TPATH "modem/write/gsm-auto-eui64", test_write_modem_gsm_auto_eui64);
 	g_test_add_func (TPATH "modem/write/gsm", test_write_modem_gsm);
