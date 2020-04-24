@@ -1,0 +1,5 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  bridges:
+    br0: {dhcp4:true, dhcp6:true}

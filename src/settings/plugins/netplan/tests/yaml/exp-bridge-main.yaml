@@ -1,0 +1,20 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  bridges:
+    br0:
+      macaddress: 31:33:33:37:BE:CD
+      parameters:
+        stp: yes
+        forward-delay: 10
+        priority: 1024
+        hello-time: 5
+        max-age: 10
+        ageing-time: 100
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: Test Write Bridge Main
+        uuid: 965e4838-253f-4291-9eda-6bb46cd4b6c8
+        device: br0
