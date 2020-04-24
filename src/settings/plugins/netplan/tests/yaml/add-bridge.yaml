@@ -1,5 +1,14 @@
 network:
   version: 2
   renderer: NetworkManager
+  ethernets:
+    slave1: {dhcp4: no}
   bridges:
-    br0: {dhcp4:true, dhcp6:true}
+    br0:
+      dhcp4: true
+      dhcp6: true
+      interfaces:
+      - slave1
+      parameters:
+        port-priority:
+          slave1: 44
