@@ -706,7 +706,7 @@ test_write_bridge_port (void)
 	NMSettingConnection *s_con;
 	NMSettingWired *s_wired;
 	NMSetting *s_port;
-	static const char *mac = "de:ad:be:ef:ca:fe";
+	guint32 i;
 	//gs_unref_ptrarray GPtrArray *vlans = NULL;
 	//NMBridgeVlan *vlan;
 
@@ -730,7 +730,6 @@ test_write_bridge_port (void)
 	s_wired = (NMSettingWired *) nm_setting_wired_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_wired));
 	g_object_set (s_wired,
-	              //NM_SETTING_WIRED_MAC_ADDRESS, mac,
 	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_NONE,
 	              NULL);
 
@@ -768,8 +767,18 @@ test_write_bridge_port (void)
 	                                TEST_NETPLAN_DIR"/add-bridge.yaml",
 									"slave0",
 	                                NULL);
-
 	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+
+	/* Re-read again, to verify the bridge-port parameters of "slave1"
+	 * (from "add-bridge.yaml") still exist and were not overwritten. */
+	reread = _connection_from_file (testfile,
+	                                TEST_NETPLAN_DIR"/add-bridge.yaml",
+									"slave1",
+	                                NULL);
+	s_port = NM_SETTING (nm_connection_get_setting_bridge_port (reread));
+	g_assert_true (s_port);
+	i = nm_setting_bridge_port_get_priority (NM_SETTING_BRIDGE_PORT(s_port));
+	g_assert_cmpint (i, ==, 44);
 }
 
 static void
