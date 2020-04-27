@@ -1,0 +1,17 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  wifis:
+    NM-d5515a99-c7f1-4fd3-bc49-ecfd5ba01c93:
+      match: { macaddress: DE:AD:BE:EF:CA:FE }
+      macaddress: 00:11:22:33:44:55
+      mtu: 1492
+      access-points:
+        open-net:
+          mode: ap
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: Test Write WiFi Main
+        uuid: d5515a99-c7f1-4fd3-bc49-ecfd5ba01c93
