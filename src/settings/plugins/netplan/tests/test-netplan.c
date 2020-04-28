@@ -638,6 +638,98 @@ test_write_wifi_wpa_eap_tls (void)
 }
 
 static void
+test_write_wifi_wpa_eap_ttls_mschapv2 (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	nmtst_auto_unlinkfile char *keyfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWireless *s_wifi;
+	NMSettingWirelessSecurity *s_wsec;
+	NMSetting8021x *s_8021x;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	gboolean success;
+	GError *error = NULL;
+	GBytes *ssid;
+	const char *ssid_data = "blahblah";
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Wifi WPA EAP-TTLS (MSCHAPv2)",
+	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_AUTOCONNECT, TRUE,
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
+	              NULL);
+
+	/* Wifi setting */
+	s_wifi = (NMSettingWireless *) nm_setting_wireless_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wifi));
+
+	ssid = g_bytes_new (ssid_data, strlen (ssid_data));
+
+	g_object_set (s_wifi,
+	              NM_SETTING_WIRELESS_SSID, ssid,
+	              NM_SETTING_WIRELESS_MODE, "infrastructure",
+	              NULL);
+
+	g_bytes_unref (ssid);
+
+	/* Wireless security setting */
+	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
+
+	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap", NULL);
+	/* XXX: Needs to be implemented in netplan
+	nm_setting_wireless_security_add_proto (s_wsec, "wpa");
+	nm_setting_wireless_security_add_proto (s_wsec, "rsn");
+	nm_setting_wireless_security_add_pairwise (s_wsec, "tkip");
+	nm_setting_wireless_security_add_pairwise (s_wsec, "ccmp");
+	nm_setting_wireless_security_add_group (s_wsec, "tkip");
+	nm_setting_wireless_security_add_group (s_wsec, "ccmp");
+	*/
+
+	/* Wireless security setting */
+	s_8021x = (NMSetting8021x *) nm_setting_802_1x_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_8021x));
+
+	nm_setting_802_1x_add_eap_method (s_8021x, "ttls");
+
+	g_object_set (s_8021x,
+	              NM_SETTING_802_1X_IDENTITY, "Bill Smith",
+	              NM_SETTING_802_1X_PASSWORD, ";alkdfja;dslkfjsad;lkfjsadf",
+	              NM_SETTING_802_1X_ANONYMOUS_IDENTITY, "foobar22",
+	              NM_SETTING_802_1X_PHASE2_AUTHEAP, "mschapv2",
+	              NULL);
+
+	success = nm_setting_802_1x_set_ca_cert (s_8021x,
+	                                         TEST_NETPLAN_WIFI_WPA_EAP_TLS_CA_CERT,
+	                                         NM_SETTING_802_1X_CK_SCHEME_PATH,
+	                                         NULL,
+	                                         &error);
+	nmtst_assert_success (success, error);
+
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connection (connection,
+	                        TEST_SCRATCH_DIR,
+	                        &testfile);
+
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
 test_write_wifi_band_a (void)
 {
 	nmtst_auto_unlinkfile char *testfile = NULL;
@@ -1523,6 +1615,7 @@ int main (int argc, char **argv)
 
 	g_test_add_func (TPATH "wifi/write/main", test_write_wifi_main);
 	g_test_add_func (TPATH "wifi/write/eap-tls", test_write_wifi_wpa_eap_tls);
+	g_test_add_func (TPATH "wifi/write/eap-ttls", test_write_wifi_wpa_eap_ttls_mschapv2);
 	g_test_add_func (TPATH "wifi/write/band-a", test_write_wifi_band_a);
 	g_test_add_func (TPATH "wifi/write/band-bg", test_write_wifi_band_bg);
 	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
