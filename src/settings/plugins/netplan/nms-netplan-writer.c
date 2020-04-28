@@ -439,6 +439,12 @@ write_8021x_setting (NMConnection *connection,
 		}
 	}
 
+	/* XXX: Verify ...phase2_autheap VS ...phase2_auth */
+	value = nm_setting_802_1x_get_phase2_autheap (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            phase2-auth: %s\n", value);
+
 	value = nm_setting_802_1x_get_identity (s_8021x);
 	if (value)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
@@ -592,20 +598,26 @@ write_8021x_setting (NMConnection *connection,
 		return FALSE;
 #endif
 
-	value = nm_setting_802_1x_get_ca_cert_path (s_8021x);
-	if (value)
-		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "            ca-certificate: %s\n", value);
+	if (nm_setting_802_1x_get_ca_cert_scheme (s_8021x) == NM_SETTING_802_1X_CK_SCHEME_PATH) {
+		value = nm_setting_802_1x_get_ca_cert_path (s_8021x);
+		if (value)
+			g_output_stream_printf (netplan, 0, NULL, NULL,
+			                        "            ca-certificate: %s\n", value);
+	}
 
-	value = nm_setting_802_1x_get_client_cert_path (s_8021x);
-	if (value)
-		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "            client-certificate: %s\n", value);
+	if (nm_setting_802_1x_get_client_cert_scheme (s_8021x) == NM_SETTING_802_1X_CK_SCHEME_PATH) {
+		value = nm_setting_802_1x_get_client_cert_path (s_8021x);
+		if (value)
+			g_output_stream_printf (netplan, 0, NULL, NULL,
+			                        "            client-certificate: %s\n", value);
+	}
 
-	value = nm_setting_802_1x_get_private_key_path (s_8021x);
-	if (value)
-		g_output_stream_printf (netplan, 0, NULL, NULL,
-		                        "            client-key: %s\n", value);
+	if (nm_setting_802_1x_get_private_key_scheme (s_8021x) == NM_SETTING_802_1X_CK_SCHEME_PATH) {
+		value = nm_setting_802_1x_get_private_key_path (s_8021x);
+		if (value)
+			g_output_stream_printf (netplan, 0, NULL, NULL,
+			                        "            client-key: %s\n", value);
+	}
 
 	value = nm_setting_802_1x_get_private_key_password (s_8021x);
 	if (value)
