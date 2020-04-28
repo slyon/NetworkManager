@@ -395,7 +395,6 @@ write_8021x_certs (NMSetting8021x *s_8021x,
 }
 #endif  /* GCC magic */
 
-#if 0  /* temp disable: unused?? */
 static gboolean
 write_8021x_setting (NMConnection *connection,
                      GOutputStream *netplan,
@@ -423,7 +422,7 @@ write_8021x_setting (NMConnection *connection,
 	/* If wired, write KEY_MGMT */
 	if (wired)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "        key-management: %s\n", "802.1x");
+		                        "            key-management: %s\n", "802.1x");
 
 	/* EAP method */
 	if (nm_setting_802_1x_get_num_eap_methods (s_8021x)) {
@@ -432,25 +431,27 @@ write_8021x_setting (NMConnection *connection,
 		// See eap_methods_table  in libnm-core/nm-setting-8021x.c
 		if (!g_strcmp0(value, "peap") || !g_strcmp0(value, "tls") || !g_strcmp0(value, "ttls")) {
 			g_output_stream_printf (netplan, 0, NULL, NULL,
-					        "        method: %s\n", value);
+			                        "            method: %s\n", value);
 		} else {
 			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
 			             "Unsupported '%s' method in netplan", value);
+			return FALSE;
 		}
-		return FALSE;
 	}
 
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        identity: %s\n",
-	                        nm_setting_802_1x_get_identity (s_8021x));
+	value = nm_setting_802_1x_get_identity (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            identity: %s\n", value);
+	value = nm_setting_802_1x_get_anonymous_identity (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            anonymous-identity: %s\n", value);
 
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        anonymous-identity: %s\n",
-	                        nm_setting_802_1x_get_anonymous_identity (s_8021x));
-
-	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        password: %s\n",
-			        nm_setting_802_1x_get_password(s_8021x));
+	value = nm_setting_802_1x_get_password (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            password: %s\n", value);
 
 #if 0 // TODO: 802.1x use set_secret instead of g_output_stream_printf()...
 	set_secret (netplan,
@@ -591,9 +592,27 @@ write_8021x_setting (NMConnection *connection,
 		return FALSE;
 #endif
 
+	value = nm_setting_802_1x_get_ca_cert_path (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            ca-certificate: %s\n", value);
+
+	value = nm_setting_802_1x_get_client_cert_path (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            client-certificate: %s\n", value);
+
+	value = nm_setting_802_1x_get_private_key_path (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            client-key: %s\n", value);
+
+	value = nm_setting_802_1x_get_private_key_password (s_8021x);
+	if (value)
+		g_output_stream_printf (netplan, 0, NULL, NULL,
+		                        "            client-key-password: %s\n", value);
 	return TRUE;
 }
-#endif
 
 static gboolean
 write_wireless_security_setting (NMConnection *connection,
@@ -605,7 +624,7 @@ write_wireless_security_setting (NMConnection *connection,
 	NMSettingWirelessSecurity *s_wsec;
 	const char *key_mgmt, *key; //, *auth_alg, *proto, *cipher;
 	const char *psk = NULL;
-	gboolean wep = FALSE, wpa = FALSE; //, dynamic_wep = FALSE;
+	gboolean wep = FALSE, wpa = FALSE, wpa_psk = FALSE; //, dynamic_wep = FALSE;
 	//NMSettingWirelessSecurityWpsMethod wps_method;
 	guint32 i;  //, num;
 	//GString *str;
@@ -630,16 +649,23 @@ write_wireless_security_setting (NMConnection *connection,
 	} else if (!strcmp (key_mgmt, "wpa-psk")) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "            key-management: psk\n");
 		wpa = TRUE;
+		wpa_psk = TRUE;
+	/* TODO: Implement wireless auth SAE mode in netplan
 	} else if (!strcmp (key_mgmt, "sae")) {
-		// TODO: Implement wireless auth SAE mode in netplan
 		g_output_stream_printf(netplan, 0, NULL, NULL, "            key-management: sae\n");
 		wpa = TRUE;
+	*/
 	} else if (!strcmp (key_mgmt, "ieee8021x")) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "            key-management: 802.1x\n");
 		//dynamic_wep = TRUE;
 	} else if (!strcmp (key_mgmt, "wpa-eap")) {
 		g_output_stream_printf(netplan, 0, NULL, NULL, "            key-management: eap\n");
 		wpa = TRUE;
+	} else if (key_mgmt != NULL) {
+		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+		             "Invalid key_mgmt '%s' in '%s' setting",
+		             key_mgmt, NM_SETTING_WIRELESS_SECURITY_SETTING_NAME);
+		return FALSE;
 	}
 
 #if 0 // TODO: Unravel this SECURITYMODE story: restricted | open | leap ???
@@ -776,14 +802,26 @@ write_wireless_security_setting (NMConnection *connection,
 	g_string_free (str, TRUE);
 #endif
 
-	if (wpa)
+	if (wpa_psk) {
 		psk = nm_setting_wireless_security_get_psk (s_wsec);
-
-	// XXX: Should be using set_secret() here?
-	// FIXME: Add quotes IFF type=WPA-PSK AND length=8-63, otherwise 64 HEX chars
-	//        see: https://github.com/CanonicalLtd/netplan/commit/2427ab267b24daa3504345be4ee6be7f286056a3
-	g_output_stream_printf(netplan, 0, NULL, NULL,
-			       "          password: %s\n", psk);
+		if (!nm_utils_wpa_psk_valid (psk)) {
+			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
+			             "Invalid psk '%s' in '%s' setting",
+			             key_mgmt, NM_SETTING_WIRELESS_SECURITY_SETTING_NAME);
+			return FALSE;
+		}
+		// XXX: Should be using set_secret() here?
+		g_output_stream_printf(netplan, 0, NULL, NULL,
+		                       "          password: \"%s\"\n", psk);
+	} else if (wpa) {
+		if (!write_8021x_setting (connection,
+		                          netplan,
+		                          secrets,
+		                          NULL, //GHashTable *blobs,
+		                          FALSE,
+		                          error))
+			return FALSE;
+	}
 
 #if 0 // TODO: wireless security: implement PMF and FILS support
 	if (nm_setting_wireless_security_get_pmf (s_wsec) == NM_SETTING_WIRELESS_SECURITY_PMF_DEFAULT)

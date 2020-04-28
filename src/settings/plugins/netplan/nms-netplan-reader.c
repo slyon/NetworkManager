@@ -1532,16 +1532,78 @@ parse_wpa_psk (NetplanWifiAccessPoint *ap,
 
 static NMSetting8021x *
 fill_8021x (NetplanNetDefinition *nd,
+            NetplanWifiAccessPoint *ap,
             const char *file,
             const char *key_mgmt,
             gboolean wifi,
             GError **error)
 {
 	gs_unref_object NMSetting8021x *s_8021x = NULL;
+	NetplanAuthEAPMethod method = NETPLAN_AUTH_EAP_NONE;
+	const char *value = NULL, *pass = NULL;
+	NetplanAuthenticationSettings auth = nd->auth;
 
 	s_8021x = (NMSetting8021x *) nm_setting_802_1x_new ();
 
+	if (wifi && ap) {
+		auth = ap->auth;
+	}
+
 	// TODO: read 802.1x settings from hashtable keys (just mapping values already in netplan structures)
+	method = auth.eap_method;
+	switch (method) {
+		case NETPLAN_AUTH_EAP_TLS:
+			nm_setting_802_1x_add_eap_method (s_8021x, "tls");
+			break;
+		case NETPLAN_AUTH_EAP_PEAP:
+			nm_setting_802_1x_add_eap_method (s_8021x, "peap");
+			break;
+		case NETPLAN_AUTH_EAP_TTLS:
+			nm_setting_802_1x_add_eap_method (s_8021x, "ttls");
+			break;
+		default:
+			// TODO: set a corresponding error/warning
+			return NULL;
+	}
+
+	value = auth.identity;
+	if (value)
+		g_object_set (s_8021x, NM_SETTING_802_1X_IDENTITY, value, NULL);
+
+	value = auth.anonymous_identity;
+	if (value)
+		g_object_set (s_8021x, NM_SETTING_802_1X_ANONYMOUS_IDENTITY, value, NULL);
+
+	value = auth.password;
+	if (value)
+		g_object_set (s_8021x, NM_SETTING_802_1X_PASSWORD, value, NULL);
+
+
+	value = auth.ca_certificate;
+	if (value)
+		nm_setting_802_1x_set_ca_cert (s_8021x,
+		                               value,
+		                               NM_SETTING_802_1X_CK_SCHEME_PATH,
+		                               NULL,
+		                               error);
+
+	value = auth.client_certificate;
+	if (value)
+		nm_setting_802_1x_set_client_cert (s_8021x,
+		                                   value,
+		                                   NM_SETTING_802_1X_CK_SCHEME_PATH,
+		                                   NULL,
+		                                   error);
+
+	value = auth.client_key;
+	pass = auth.client_key_password;
+	if (value && pass)
+		nm_setting_802_1x_set_private_key (s_8021x,
+	                                       value,
+	                                       pass,
+	                                       NM_SETTING_802_1X_CK_SCHEME_PATH,
+	                                       NULL,
+	                                       error);
 
 	return g_steal_pointer (&s_8021x);
 }
@@ -1598,24 +1660,28 @@ make_wpa_setting (NetplanNetDefinition *nd,
 			nm_setting_wireless_security_add_proto (wsec, "rsn");
 		/* Else: Stay with the default, i.e.: wpa;rsn; */
 
-		if (ap->auth.password) {
-			gs_free char *psk = NULL;
-			psk = parse_wpa_psk (val, file, ssid, &local);
-			if (psk)
-				g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_PSK, psk, NULL);
-			else if (local) {
+		if (ap->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK) {
+			if (ap->auth.password) {
+				gs_free char *psk = NULL;
+				psk = parse_wpa_psk (val, file, ssid, &local);
+				if (psk)
+					g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_PSK, psk, NULL);
+				else if (local) {
+					g_propagate_error (error, local);
+					return NULL;
+				}
+			}
+			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
+		} else {
+			*s_8021x = fill_8021x (nd, ap, file, v, TRUE, &local);
+			if (!*s_8021x) {
 				g_propagate_error (error, local);
 				return NULL;
 			}
-		}
-
-		if (ap->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK)
-			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
-		else {
 			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap", NULL);
 		}
 	} else {
-		*s_8021x = fill_8021x (nd, file, v, TRUE, error);
+		*s_8021x = fill_8021x (nd, NULL, file, v, TRUE, error);
 		if (!*s_8021x)
 			return NULL;
 	}
@@ -2156,7 +2222,7 @@ make_wired_setting (NetplanNetDefinition *nd,
 		found = TRUE;
 	if (cvalue && cvalue[0] != '\0') {
 		if (!strcmp (cvalue, "IEEE8021X")) {
-			*s_8021x = fill_8021x (netplan, file, cvalue, FALSE, error);
+			*s_8021x = fill_8021x (netplan, NULL, file, cvalue, FALSE, error);
 			if (!*s_8021x)
 				return NULL;
 		} else {

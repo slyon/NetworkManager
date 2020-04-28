@@ -7,8 +7,11 @@ network:
       macaddress: 00:11:22:33:44:55
       mtu: 1492
       access-points:
-        open-net:
+        my-net:
           mode: ap
+          auth:
+            key-management: psk
+          password: "s0s3cr3t"
       dhcp4: yes
       dhcp6: yes
       ipv6-address-generation: stable-privacy
