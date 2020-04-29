@@ -1,0 +1,22 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  wifis:
+    NM-2ac5e61f-990a-48b5-97a1-8c3e9e155fb4:
+      access-points:
+        blahblah:
+          mode: infrastructure
+          auth:
+            key-management: eap
+            method: ttls
+            phase2-auth: mschapv2
+            identity: Bill Smith
+            anonymous-identity: foobar22
+            password: ;alkdfja;dslkfjsad;lkfjsadf
+            ca-certificate: /x/src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: Test Write Wifi WPA EAP-TTLS (MSCHAPv2)
+        uuid: 2ac5e61f-990a-48b5-97a1-8c3e9e155fb4

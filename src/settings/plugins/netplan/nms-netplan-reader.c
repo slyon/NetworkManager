@@ -1566,10 +1566,9 @@ fill_8021x (NetplanNetDefinition *nd,
 			return NULL;
 	}
 
-	/* XXX: Verify ...PHASE2_AUTHEAP VS ...PHASE2_AUTH */
 	value = auth.phase2_auth;
 	if (value)
-		g_object_set (s_8021x, NM_SETTING_802_1X_PHASE2_AUTHEAP, value, NULL);
+		g_object_set (s_8021x, NM_SETTING_802_1X_PHASE2_AUTH, value, NULL);
 
 	value = auth.identity;
 	if (value)

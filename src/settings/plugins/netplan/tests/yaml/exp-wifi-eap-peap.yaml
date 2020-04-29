@@ -1,0 +1,22 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  wifis:
+    NM-24c60a6a-dfcd-4992-a454-2c7fab53cebc:
+      access-points:
+        blahblah:
+          mode: infrastructure
+          auth:
+            key-management: eap
+            method: peap
+            phase2-auth: mschapv2
+            identity: Bob Saget
+            anonymous-identity: barney
+            password: Kids, it was back in October 2008...
+            ca-certificate: /x/src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: Test Write Wifi WPA EAP-PEAP (MSCHAPv2)
+        uuid: 24c60a6a-dfcd-4992-a454-2c7fab53cebc

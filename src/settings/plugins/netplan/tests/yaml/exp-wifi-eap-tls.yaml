@@ -1,0 +1,22 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  wifis:
+    NM-aeb01292-957c-4f84-8f74-4a94d15b47b2:
+      access-points:
+        blahblah:
+          mode: infrastructure
+          auth:
+            key-management: eap
+            method: tls
+            identity: Bill Smith
+            ca-certificate: /x/src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
+            client-certificate: /x/src/settings/plugins/netplan/tests/yaml/test1_key_and_cert.pem
+            client-key: /x/src/settings/plugins/netplan/tests/yaml/test1_key_and_cert.pem
+            client-key-password: test1
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-address-generation: stable-privacy
+      networkmanager:
+        name: Test Write Wifi WPA EAP-TLS
+        uuid: aeb01292-957c-4f84-8f74-4a94d15b47b2
