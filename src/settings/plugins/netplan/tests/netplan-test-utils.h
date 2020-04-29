@@ -58,6 +58,7 @@
 #define TEST_NETPLAN_WIFI_WPA_EAP_TLS_CA_CERT TEST_NETPLAN_DIR"/test_ca_cert.pem"
 #define TEST_NETPLAN_WIFI_WPA_EAP_TLS_CLIENT_CERT TEST_NETPLAN_DIR"/test1_key_and_cert.pem"
 #define TEST_NETPLAN_WIFI_WPA_EAP_TLS_PRIVATE_KEY TEST_NETPLAN_DIR"/test1_key_and_cert.pem"
+#define TEST_NETPLAN_WIFI_WPA_EAP_PEAP_CA_CERT TEST_NETPLAN_DIR"/test_ca_cert.pem"
 
 /*****************************************************************************/
 

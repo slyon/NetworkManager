@@ -555,7 +555,7 @@ test_write_wifi_wpa_eap_tls (void)
 
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_ID, "Test Write Wifi WPA EAP-TLS",
-	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_UUID, "aeb01292-957c-4f84-8f74-4a94d15b47b2",
 	              NM_SETTING_CONNECTION_AUTOCONNECT, TRUE,
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
 	              NULL);
@@ -628,8 +628,9 @@ test_write_wifi_wpa_eap_tls (void)
 	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 	nmtst_assert_connection_verifies (connection);
 
-	_writer_new_connection (connection,
-	                        TEST_SCRATCH_DIR,
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR_TMP,
+	                        TEST_NETPLAN_DIR"/exp-wifi-eap-tls.yaml",
 	                        &testfile);
 
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
@@ -664,7 +665,7 @@ test_write_wifi_wpa_eap_ttls_mschapv2 (void)
 
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_ID, "Test Write Wifi WPA EAP-TTLS (MSCHAPv2)",
-	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
+	              NM_SETTING_CONNECTION_UUID, "2ac5e61f-990a-48b5-97a1-8c3e9e155fb4",
 	              NM_SETTING_CONNECTION_AUTOCONNECT, TRUE,
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
 	              NULL);
@@ -706,7 +707,7 @@ test_write_wifi_wpa_eap_ttls_mschapv2 (void)
 	              NM_SETTING_802_1X_IDENTITY, "Bill Smith",
 	              NM_SETTING_802_1X_PASSWORD, ";alkdfja;dslkfjsad;lkfjsadf",
 	              NM_SETTING_802_1X_ANONYMOUS_IDENTITY, "foobar22",
-	              NM_SETTING_802_1X_PHASE2_AUTHEAP, "mschapv2",
+	              NM_SETTING_802_1X_PHASE2_AUTH, "mschapv2",
 	              NULL);
 
 	success = nm_setting_802_1x_set_ca_cert (s_8021x,
@@ -720,8 +721,97 @@ test_write_wifi_wpa_eap_ttls_mschapv2 (void)
 
 	nmtst_assert_connection_verifies (connection);
 
-	_writer_new_connection (connection,
-	                        TEST_SCRATCH_DIR,
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR_TMP,
+	                        TEST_NETPLAN_DIR"/exp-wifi-eap-ttls.yaml",
+	                        &testfile);
+
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
+test_write_wifi_wpa_eap_peap (void)
+{
+	nmtst_auto_unlinkfile char *keyfile = NULL;
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWireless *s_wifi;
+	NMSettingWirelessSecurity *s_wsec;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	NMSetting8021x *s_8021x;
+	gboolean success;
+	GError *error = NULL;
+	GBytes *ssid;
+	const char *ssid_data = "blahblah";
+
+	_clear_all_netdefs ();
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Test Write Wifi WPA EAP-PEAP (MSCHAPv2)",
+	              NM_SETTING_CONNECTION_UUID, "24c60a6a-dfcd-4992-a454-2c7fab53cebc",
+	              NM_SETTING_CONNECTION_AUTOCONNECT, TRUE,
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
+	              NULL);
+
+	/* Wifi setting */
+	s_wifi = (NMSettingWireless *) nm_setting_wireless_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wifi));
+
+	ssid = g_bytes_new (ssid_data, strlen (ssid_data));
+
+	g_object_set (s_wifi,
+	              NM_SETTING_WIRELESS_SSID, ssid,
+	              NM_SETTING_WIRELESS_MODE, "infrastructure",
+	              NULL);
+
+	g_bytes_unref (ssid);
+
+	/* Wireless security setting */
+	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
+
+	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap", NULL);
+
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
+
+	/* 802.1x setting */
+	s_8021x = (NMSetting8021x *) nm_setting_802_1x_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_8021x));
+
+	g_object_set (s_8021x,
+	              NM_SETTING_802_1X_IDENTITY, "Bob Saget",
+	              NM_SETTING_802_1X_ANONYMOUS_IDENTITY, "barney",
+	              NM_SETTING_802_1X_PASSWORD, "Kids, it was back in October 2008...",
+				  /* XXX: Needs to be implemented in netplan
+	              NM_SETTING_802_1X_PHASE1_PEAPVER, "1",
+	              NM_SETTING_802_1X_PHASE1_PEAPLABEL, "1", */
+	              NM_SETTING_802_1X_PHASE2_AUTH, "mschapv2",
+	              NULL);
+
+	nm_setting_802_1x_add_eap_method (s_8021x, "peap");
+
+	success = nm_setting_802_1x_set_ca_cert (s_8021x,
+	                                         TEST_NETPLAN_WIFI_WPA_EAP_PEAP_CA_CERT,
+	                                         NM_SETTING_802_1X_CK_SCHEME_PATH,
+	                                         NULL,
+	                                         &error);
+	nmtst_assert_success (success, error);
+
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR_TMP,
+	                        TEST_NETPLAN_DIR"/exp-wifi-eap-peap.yaml",
 	                        &testfile);
 
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
@@ -1616,6 +1706,7 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wifi/write/main", test_write_wifi_main);
 	g_test_add_func (TPATH "wifi/write/eap-tls", test_write_wifi_wpa_eap_tls);
 	g_test_add_func (TPATH "wifi/write/eap-ttls", test_write_wifi_wpa_eap_ttls_mschapv2);
+	g_test_add_func (TPATH "wifi/write/eap-peap", test_write_wifi_wpa_eap_peap);
 	g_test_add_func (TPATH "wifi/write/band-a", test_write_wifi_band_a);
 	g_test_add_func (TPATH "wifi/write/band-bg", test_write_wifi_band_bg);
 	g_test_add_func (TPATH "wifi/write/wowlan-macrandom", test_wifi_wowlan_mac_randomization);
