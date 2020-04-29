@@ -439,8 +439,7 @@ write_8021x_setting (NMConnection *connection,
 		}
 	}
 
-	/* XXX: Verify ...phase2_autheap VS ...phase2_auth */
-	value = nm_setting_802_1x_get_phase2_autheap (s_8021x);
+	value = nm_setting_802_1x_get_phase2_auth (s_8021x);
 	if (value)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "            phase2-auth: %s\n", value);
