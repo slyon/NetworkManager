@@ -134,8 +134,7 @@ test_write_wired_basic (void)
 	g_assert_true (s_wired);
 	g_assert_true (nm_setting_wired_get_wake_on_lan (s_wired) == NM_SETTING_WIRED_WAKE_ON_LAN_NONE);
 
-	nm_connection_add_setting (connection, nm_setting_proxy_new ());
-	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
 
 static void
@@ -246,6 +245,7 @@ test_write_wired_static (void)
 
 	route6 = nm_ip_route_new (AF_INET6, "::", 128, "2222:aaaa::9999", 1, &error);
 	g_assert_no_error (error);
+	/* TODO: Needs to be implemented in netplan. */
 	//nm_ip_route_set_attribute (route6, NM_IP_ROUTE_ATTRIBUTE_CWND, g_variant_new_uint32 (100));
 	//nm_ip_route_set_attribute (route6, NM_IP_ROUTE_ATTRIBUTE_MTU, g_variant_new_uint32 (1280));
 	//nm_ip_route_set_attribute (route6, NM_IP_ROUTE_ATTRIBUTE_LOCK_CWND, g_variant_new_boolean (TRUE));
@@ -259,7 +259,7 @@ test_write_wired_static (void)
 	nm_setting_ip_config_add_dns (s_ip6, "cafe:ffff:eeee:dddd:cccc:bbbb:aaaa:feed");
 
 	/* DNS domains */
-	// FIXME: How to differentiate ip4/ip6 search domains??
+	/* FIXME: How to differentiate ip4/ip6 search domains in netplan? */
 	//nm_setting_ip_config_add_dns_search (s_ip6, "foobar6.com");
 	//nm_setting_ip_config_add_dns_search (s_ip6, "lab6.foobar.com");
 
@@ -278,8 +278,7 @@ test_write_wired_static (void)
 	// XXX: netplan can only set DEFAULT (wake-on-lan = true) or IGNORE (wake-on-lan = false)
 	g_assert_true (nm_setting_wired_get_wake_on_lan (s_wired) == NM_SETTING_WIRED_WAKE_ON_LAN_DEFAULT);
 
-	nm_connection_add_setting (connection, nm_setting_proxy_new ());
-	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
 
 static void
@@ -343,7 +342,7 @@ test_write_wired_static_routes (void)
 
 	/* Write out routes */
 	route = nm_ip_route_new (AF_INET, "1.2.3.0", 24, "222.173.190.239", 0, &error);
-	/* XXX: Needs to be implemented in netplan */
+	/* TODO: Needs to be implemented in netplan. */
 	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (3455));
 	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean (TRUE));
 	g_assert_no_error (error);
@@ -351,7 +350,7 @@ test_write_wired_static_routes (void)
 	nm_ip_route_unref (route);
 
 	route = nm_ip_route_new (AF_INET, "3.2.1.0", 24, "202.254.186.190", 77, &error);
-	/* XXX: Needs to be implemented in netplan */
+	/* TODO: Needs to be implemented in netplan. */
 	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (30000));
 	//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean (FALSE));
 	g_assert_no_error (error);
@@ -524,7 +523,6 @@ test_write_wifi_main (void)
 	                        &testfile);
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
-	//nm_connection_add_setting (connection, nm_setting_proxy_new ());
 	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
 
@@ -578,28 +576,26 @@ test_write_wifi_wpa_eap_tls (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
 
 	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap",
-	              /* XXX: Needs to be implemented in netplan
-	              NM_SETTING_WIRELESS_SECURITY_FILS, (int) NM_SETTING_WIRELESS_SECURITY_FILS_REQUIRED,*/
+	              /* TODO: Needs to be implemented in netplan. */
+	              //NM_SETTING_WIRELESS_SECURITY_FILS, (int) NM_SETTING_WIRELESS_SECURITY_FILS_REQUIRED,
 	              NULL);
 
-	/* XXX: Needs to be implemented in netplan
-	nm_setting_wireless_security_add_proto (s_wsec, "wpa");
-	nm_setting_wireless_security_add_pairwise (s_wsec, "tkip");
-	nm_setting_wireless_security_add_group (s_wsec, "tkip");
-	*/
+	/* TODO: Needs to be implemented in netplan. */
+	//nm_setting_wireless_security_add_proto (s_wsec, "wpa");
+	//nm_setting_wireless_security_add_pairwise (s_wsec, "tkip");
+	//nm_setting_wireless_security_add_group (s_wsec, "tkip");
 
 	/* Wireless security setting */
 	s_8021x = (NMSetting8021x *) nm_setting_802_1x_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_8021x));
 
 	g_object_set (s_8021x, NM_SETTING_802_1X_IDENTITY, "Bill Smith", NULL);
-	/* XXX: Needs to be implemented in netplan
-	g_object_set (s_8021x,
-	              NM_SETTING_802_1X_PHASE1_AUTH_FLAGS,
-	              (guint) (NM_SETTING_802_1X_AUTH_FLAGS_TLS_1_0_DISABLE |
-	                       NM_SETTING_802_1X_AUTH_FLAGS_TLS_1_1_DISABLE),
-	              NULL);
-	*/
+	/* TODO: Needs to be implemented in netplan. */
+	//g_object_set (s_8021x,
+	//              NM_SETTING_802_1X_PHASE1_AUTH_FLAGS,
+	//              (guint) (NM_SETTING_802_1X_AUTH_FLAGS_TLS_1_0_DISABLE |
+	//                       NM_SETTING_802_1X_AUTH_FLAGS_TLS_1_1_DISABLE),
+	//              NULL);
 
 	nm_setting_802_1x_add_eap_method (s_8021x, "tls");
 
@@ -688,14 +684,13 @@ test_write_wifi_wpa_eap_ttls_mschapv2 (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
 
 	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-eap", NULL);
-	/* XXX: Needs to be implemented in netplan
-	nm_setting_wireless_security_add_proto (s_wsec, "wpa");
-	nm_setting_wireless_security_add_proto (s_wsec, "rsn");
-	nm_setting_wireless_security_add_pairwise (s_wsec, "tkip");
-	nm_setting_wireless_security_add_pairwise (s_wsec, "ccmp");
-	nm_setting_wireless_security_add_group (s_wsec, "tkip");
-	nm_setting_wireless_security_add_group (s_wsec, "ccmp");
-	*/
+	/* TODO: Needs to be implemented in netplan. */
+	//nm_setting_wireless_security_add_proto (s_wsec, "wpa");
+	//nm_setting_wireless_security_add_proto (s_wsec, "rsn");
+	//nm_setting_wireless_security_add_pairwise (s_wsec, "tkip");
+	//nm_setting_wireless_security_add_pairwise (s_wsec, "ccmp");
+	//nm_setting_wireless_security_add_group (s_wsec, "tkip");
+	//nm_setting_wireless_security_add_group (s_wsec, "ccmp");
 
 	/* Wireless security setting */
 	s_8021x = (NMSetting8021x *) nm_setting_802_1x_new ();
@@ -792,9 +787,9 @@ test_write_wifi_wpa_eap_peap (void)
 	              NM_SETTING_802_1X_IDENTITY, "Bob Saget",
 	              NM_SETTING_802_1X_ANONYMOUS_IDENTITY, "barney",
 	              NM_SETTING_802_1X_PASSWORD, "Kids, it was back in October 2008...",
-				  /* XXX: Needs to be implemented in netplan
-	              NM_SETTING_802_1X_PHASE1_PEAPVER, "1",
-	              NM_SETTING_802_1X_PHASE1_PEAPLABEL, "1", */
+	              /* TODO: Needs to be implemented in netplan. */
+	              //NM_SETTING_802_1X_PHASE1_PEAPVER, "1",
+	              //NM_SETTING_802_1X_PHASE1_PEAPLABEL, "1",
 	              NM_SETTING_802_1X_PHASE2_AUTH, "mschapv2",
 	              NULL);
 
@@ -938,7 +933,8 @@ test_wifi_wowlan_mac_randomization (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_wireless));
 	ssid = g_bytes_new ("open-net", 8);
 	g_object_set (s_wireless,
-	              //NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION, NM_SETTING_MAC_RANDOMIZATION_ALWAYS, // TODO: needs to be implemented in netplan
+	              /* TODO: Needs to be implemented in netplan. */
+	              //NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION, NM_SETTING_MAC_RANDOMIZATION_ALWAYS,
 	              NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_INFRA,
 	              NM_SETTING_WIRELESS_SSID, ssid,
 				  NM_SETTING_WIRELESS_WAKE_ON_WLAN, NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL,
@@ -957,10 +953,10 @@ test_wifi_wowlan_mac_randomization (void)
 	s_wireless = nm_connection_get_setting_wireless (reread);
 	g_assert_true (s_wireless);
 	g_assert_true (nm_setting_wireless_get_wake_on_wlan (s_wireless) == NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL);
+	/* TODO: Needs to be implemented in netplan. */
 	//g_assert_true (nm_setting_wireless_get_mac_address_randomization (s_wireless) == NM_SETTING_MAC_RANDOMIZATION_ALWAYS);
 
-	nm_connection_add_setting (connection, nm_setting_proxy_new ());
-	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
 
 static void
@@ -998,35 +994,31 @@ test_write_bridge_main (void)
 	s_bridge = (NMSettingBridge *) nm_setting_bridge_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_bridge));
 
-	/* XXX: Needs to be implemented in netplan
-	vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
-	vlan = nm_bridge_vlan_new (10, 16);
-	nm_bridge_vlan_set_untagged (vlan, TRUE);
-	g_ptr_array_add (vlans, vlan);
-	vlan = nm_bridge_vlan_new (22, 22);
-	nm_bridge_vlan_set_pvid (vlan, TRUE);
-	nm_bridge_vlan_set_untagged (vlan, TRUE);
-	g_ptr_array_add (vlans, vlan);
-	vlan = nm_bridge_vlan_new (44, 0);
-	g_ptr_array_add (vlans, vlan);
-	*/
+	/* TODO: Needs to be implemented in netplan. */
+	//vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
+	//vlan = nm_bridge_vlan_new (10, 16);
+	//nm_bridge_vlan_set_untagged (vlan, TRUE);
+	//g_ptr_array_add (vlans, vlan);
+	//vlan = nm_bridge_vlan_new (22, 22);
+	//nm_bridge_vlan_set_pvid (vlan, TRUE);
+	//nm_bridge_vlan_set_untagged (vlan, TRUE);
+	//g_ptr_array_add (vlans, vlan);
+	//vlan = nm_bridge_vlan_new (44, 0);
+	//g_ptr_array_add (vlans, vlan);
 
 	g_object_set (s_bridge,
 	              NM_SETTING_BRIDGE_MAC_ADDRESS, mac,
 	              NM_SETTING_BRIDGE_AGEING_TIME, 100,
 	              NM_SETTING_BRIDGE_PRIORITY, 1024,
-	              //NM_SETTING_BRIDGE_PORT_PRIORITY, 1,
 	              NM_SETTING_BRIDGE_FORWARD_DELAY, 10,
 	              NM_SETTING_BRIDGE_HELLO_TIME, 5,
 	              NM_SETTING_BRIDGE_MAX_AGE, 10,
-	              //NM_SETTING_BRIDGE_PORT_PATH_COST, 1,
 	              NM_SETTING_BRIDGE_STP, TRUE,
-	              /* XXX: Needs to be implemented in netplan
-	              NM_SETTING_BRIDGE_GROUP_FORWARD_MASK, 19008,
-	              NM_SETTING_BRIDGE_VLAN_FILTERING, TRUE,
-	              NM_SETTING_BRIDGE_VLAN_DEFAULT_PVID, 4000,
-	              NM_SETTING_BRIDGE_VLANS, vlans,
-	              */
+	              /* TODO: Needs to be implemented in netplan. */
+	              //NM_SETTING_BRIDGE_VLANS, vlans,
+	              //NM_SETTING_BRIDGE_VLAN_FILTERING, TRUE,
+	              //NM_SETTING_BRIDGE_VLAN_DEFAULT_PVID, 4000,
+	              //NM_SETTING_BRIDGE_GROUP_FORWARD_MASK, 19008,
 	              NULL);
 
 	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
@@ -1083,18 +1075,17 @@ test_write_bridge_port (void)
 	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_NONE,
 	              NULL);
 
-	/* TODO: Needs to be implemented in netplan
-	vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
-	vlan = nm_bridge_vlan_new (1, 0);
-	nm_bridge_vlan_set_untagged (vlan, TRUE);
-	g_ptr_array_add (vlans, vlan);
-	vlan = nm_bridge_vlan_new (4, 4094);
-	nm_bridge_vlan_set_untagged (vlan, TRUE);
-	g_ptr_array_add (vlans, vlan);
-	vlan = nm_bridge_vlan_new (2, 2);
-	nm_bridge_vlan_set_pvid (vlan, TRUE);
-	g_ptr_array_add (vlans, vlan);
-	*/
+	/* TODO: Needs to be implemented in netplan. */
+	//vlans = g_ptr_array_new_with_free_func ((GDestroyNotify) nm_bridge_vlan_unref);
+	//vlan = nm_bridge_vlan_new (1, 0);
+	//nm_bridge_vlan_set_untagged (vlan, TRUE);
+	//g_ptr_array_add (vlans, vlan);
+	//vlan = nm_bridge_vlan_new (4, 4094);
+	//nm_bridge_vlan_set_untagged (vlan, TRUE);
+	//g_ptr_array_add (vlans, vlan);
+	//vlan = nm_bridge_vlan_new (2, 2);
+	//nm_bridge_vlan_set_pvid (vlan, TRUE);
+	//g_ptr_array_add (vlans, vlan);
 
 	/* Bridge port */
 	s_port = nm_setting_bridge_port_new ();
@@ -1102,7 +1093,8 @@ test_write_bridge_port (void)
 	g_object_set (s_port,
 	              NM_SETTING_BRIDGE_PORT_PRIORITY, 50,
 	              NM_SETTING_BRIDGE_PORT_PATH_COST, 33,
-	              //NM_SETTING_BRIDGE_PORT_VLANS, vlans, // XXX: Not implemented in netplan
+	              /* TODO: Needs to be implemented in netplan. */
+	              //NM_SETTING_BRIDGE_PORT_VLANS, vlans,
 	              NULL);
 
 	nmtst_assert_connection_verifies (connection);
@@ -1152,7 +1144,8 @@ test_write_vlan (void)
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_ID, "Test Write VLAN",
 	              NM_SETTING_CONNECTION_UUID, "0f9f128b-3f77-4ff3-806d-bc1e85621c99",
-	              //NM_SETTING_CONNECTION_AUTOCONNECT, FALSE, // Not implemented by netplan
+	              /* TODO: Needs to be implemented in netplan. */
+	              //NM_SETTING_CONNECTION_AUTOCONNECT, FALSE,
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_VLAN_SETTING_NAME,
 				  NM_SETTING_CONNECTION_INTERFACE_NAME, "enred",
 	              NULL);
@@ -1167,13 +1160,14 @@ test_write_vlan (void)
 	g_object_set (s_vlan,
 	              NM_SETTING_VLAN_PARENT, "eno1",
 	              NM_SETTING_VLAN_ID, 42,
-	              //NM_SETTING_VLAN_FLAGS, 1, // XXX: Needs to be implemented in netplan
+	              /* TODO: Needs to be implemented in netplan. */
+	              //NM_SETTING_VLAN_FLAGS, 1,
 	              NULL);
 
 	/* Add generic IP4/6 DHCP settings. */
 	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 
-	// cannot re-read because of missing eno1 definition
+	/* Cannot re-read because of missing eno1 definition. */
 	_writer_new_connection_no_reread (connection,
 	                                  TEST_SCRATCH_DIR_TMP,
 	                                  &testfile,
@@ -1242,12 +1236,12 @@ test_write_bond_main (void)
 	/* Add generic IP4/6 DHCP settings. */
 	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
 
-	// cannot re-read because of missing slave0 definition
+	/* Cannot re-read because of missing eno1 definition. */
 	_writer_new_connection_no_reread (connection,
 	                                  TEST_SCRATCH_DIR_TMP,
 	                                  &testfile,
 	                                  TEST_NETPLAN_DIR"/exp-bond-main.yaml");
-	/* Manually re-read with added slave (dummy) interfaces, to make the
+	/* Manually re-read with added base (dummy) interfaces, to make the
 	 * netplan parser happy. Explicitly choose the "bond0" netdef. */
 	reread = _connection_from_file (testfile,
 	                                TEST_NETPLAN_DIR"/add-base-iface.yaml",
@@ -1528,8 +1522,7 @@ test_write_modem_cdma (void)
 	_writer_new_connection (connection, TEST_SCRATCH_DIR, &testfile);
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
-	nm_connection_add_setting (connection, nm_setting_proxy_new ());
-	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
 
 static void
@@ -1575,7 +1568,8 @@ test_example_field_wifi (void)
 	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
 	g_object_set (s_wsec,
-	              //NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "open", // XXX: This seems to be invalid: Only valid for WEP, not WPA-PSK
+	              /* XXX: AUTH_ALG=open seems to be invalid for WPA-PSK. */
+	              //NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "open",
 	              //NM_SETTING_WIRELESS_SECURITY_GROUP, "",
 	              NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk",
 	              //NM_SETTING_WIRELESS_SECURITY_PAIRWISE, ""
@@ -1609,8 +1603,7 @@ test_example_field_wifi (void)
 
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
-	nm_connection_add_setting (connection, nm_setting_proxy_new ());
-	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
 
 static void
@@ -1673,8 +1666,7 @@ test_example_field_lte (void)
 
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
-	nm_connection_add_setting (connection, nm_setting_proxy_new ());
-	nmtst_assert_connection_equals (connection, FALSE, reread, FALSE);
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
 }
 
 /*****************************************************************************/
