@@ -67,79 +67,8 @@
 
 /*****************************************************************************/
 
-#if 0   /* TODO: Support certs for reading from netplan files. */
-static gboolean
-_cert_get_cert (NetplanNetDefinition *nd,
-                const char *netplan_key,
-                GBytes **out_cert,
-                NMSetting8021xCKScheme *out_scheme,
-                GError **error)
-{
-	nm_auto_free_secret char *val_free = NULL;
-	const char *val;
-	gs_unref_bytes GBytes *cert = NULL;
-	GError *local = NULL;
-	NMSetting8021xCKScheme scheme;
-
-	val = svGetValueStr (netplan, netplan_key, &val_free);
-	if (!val) {
-		NM_SET_OUT (out_cert, NULL);
-		NM_SET_OUT (out_scheme, NM_SETTING_802_1X_CK_SCHEME_UNKNOWN);
-		return TRUE;
-	}
-
-	cert = _cert_get_cert_bytes (svFileGetName (netplan), val, &local);
-	if (!cert)
-		goto err;
-
-	scheme = _nm_setting_802_1x_cert_get_scheme (cert, &local);
-	if (scheme == NM_SETTING_802_1X_CK_SCHEME_UNKNOWN)
-		goto err;
-
-	NM_SET_OUT (out_cert, g_steal_pointer (&cert));
-	NM_SET_OUT (out_scheme, scheme);
-	return TRUE;
-
-err:
-	g_set_error (error,
-	             NM_SETTINGS_ERROR,
-	             NM_SETTINGS_ERROR_INVALID_CONNECTION,
-	             "invalid certificate %s: %s",
-	             netplan_key,
-	             local->message);
-	g_error_free (local);
-	return FALSE;
-}
-
-static gboolean
-_cert_set_from_netplan (gpointer setting,
-                        NetplanNetDefinition *nd,
-                        const char *netplan_key,
-                        const char *property_name,
-                        GBytes **out_cert,
-                        GError **error)
-{
-	gs_unref_bytes GBytes *cert = NULL;
-
-	if (!_cert_get_cert (netplan,
-	                     netplan_key,
-	                     &cert,
-	                     NULL,
-	                     error))
-		return FALSE;
-
-	g_object_set (setting, property_name, cert, NULL);
-
-	NM_SET_OUT (out_cert, g_steal_pointer (&cert));
-	return TRUE;
-}
-#endif /* cert support */
-
-/*****************************************************************************/
-
 static void
-check_if_bond_slave (NetplanNetDefinition *nd,
-                     NMSettingConnection *s_con)
+check_if_bond_slave (NetplanNetDefinition *nd, NMSettingConnection *s_con)
 {
 	const char *v;
 	const char *master;
@@ -161,33 +90,11 @@ check_if_bond_slave (NetplanNetDefinition *nd,
 }
 
 #if 0  /* TODO: Implement (read) Team support  */
+NM_SETTING_CONNECTION_MASTER
+NM_SETTING_CONNECTION_SLAVE_TYPE (NM_SETTING_TEAM_SETTING_NAME)
 static void
-check_if_team_slave (NetplanNetDefinition *nd,
-                     NMSettingConnection *s_con)
-{
-	gs_free char *value = NULL;
-	const char *v;
-	const char *master;
-
-	v = svGetValueStr (netplan, "TEAM_MASTER_UUID", &value);
-	if (!v)
-		v = svGetValueStr (netplan, "TEAM_MASTER", &value);
-	if (!v)
-		return;
-
-	master = nm_setting_connection_get_master (s_con);
-	if (master) {
-		PARSE_WARNING ("Already configured as slave of %s. Ignoring TEAM_MASTER{_UUID}=\"%s\"",
-		               master, v);
-		return;
-	}
-
-	g_object_set (s_con,
-	              NM_SETTING_CONNECTION_MASTER, v,
-	              NM_SETTING_CONNECTION_SLAVE_TYPE, NM_SETTING_TEAM_SETTING_NAME,
-	              NULL);
-}
-#endif /* team support */
+check_if_team_slave (NetplanNetDefinition *nd, NMSettingConnection *s_con)
+#endif
 
 static char *
 make_connection_name (NetplanNetDefinition *nd,
@@ -254,8 +161,7 @@ make_connection_setting (const char *file,
 		uuid = uuid_free;
 	}
 
-	/* XXX: Can the stable-id be unset, or do we need to create one? E.g. via g_strdup(new_id)? */
-	stable_id = nd->backend_settings.nm.stable_id ? nd->backend_settings.nm.stable_id : NULL;
+	stable_id = nd->backend_settings.nm.stable_id ?: NULL;
 	g_object_set (s_con,
 	              NM_SETTING_CONNECTION_TYPE, type,
 	              NM_SETTING_CONNECTION_UUID, uuid,
@@ -280,66 +186,21 @@ make_connection_setting (const char *file,
 	}
 
 #if 0  /* TODO: handle LLDP, ONBOOT (autoconnect) settings for NM */
-	v = svGetValueStr (netplan, "LLDP", &value);
-	if (nm_streq0 (v, "rx"))
-		lldp = NM_SETTING_CONNECTION_LLDP_ENABLE_RX;
-	else
-		lldp = svParseBoolean (v, NM_SETTING_CONNECTION_LLDP_DEFAULT);
-
-	/* Missing ONBOOT is treated as "ONBOOT=true" by the old network service */
-	g_object_set (s_con,
-	              NM_SETTING_CONNECTION_AUTOCONNECT,
-	              svGetValueBoolean (netplan, "ONBOOT", TRUE),
-	              NM_SETTING_CONNECTION_AUTOCONNECT_PRIORITY,
-	              (int) svGetValueInt64 (netplan, "AUTOCONNECT_PRIORITY", 10,
-	                                      NM_SETTING_CONNECTION_AUTOCONNECT_PRIORITY_MIN,
-	                                      NM_SETTING_CONNECTION_AUTOCONNECT_PRIORITY_MAX,
-	                                      NM_SETTING_CONNECTION_AUTOCONNECT_PRIORITY_DEFAULT),
-	              NM_SETTING_CONNECTION_AUTOCONNECT_RETRIES,
-	              (int) svGetValueInt64 (netplan, "AUTOCONNECT_RETRIES", 10,
-	                                      -1, G_MAXINT32, -1),
-	              NM_SETTING_CONNECTION_MULTI_CONNECT,
-	              (gint) svGetValueInt64 (netplan, "MULTI_CONNECT", 10,
-	                                      G_MININT32, G_MAXINT32, NM_CONNECTION_MULTI_CONNECT_DEFAULT),
-	              NM_SETTING_CONNECTION_AUTOCONNECT_SLAVES,
-	              svGetValueBoolean (netplan, "AUTOCONNECT_SLAVES", NM_SETTING_CONNECTION_AUTOCONNECT_SLAVES_DEFAULT),
-	              NM_SETTING_CONNECTION_LLDP, lldp,
-	              NULL);
-	nm_clear_g_free (&value);
+NM_SETTING_CONNECTION_AUTOCONNECT
+NM_SETTING_CONNECTION_AUTOCONNECT_PRIORITY
+NM_SETTING_CONNECTION_AUTOCONNECT_RETRIES
+NM_SETTING_CONNECTION_MULTI_CONNECT
+NM_SETTING_CONNECTION_AUTOCONNECT_SLAVES
+NM_SETTING_CONNECTION_LLDP
 #endif
 
 #if 0  /* TODO: User permissions handling in netplan syntax */
-	v = svGetValueStr (netplan, "USERS", &value);
-	if (v) {
-		gs_free const char **items = NULL;
-
-		items = nm_utils_strsplit_set (v, " ");
-		for (iter = items; iter && *iter; iter++) {
-			if (!nm_setting_connection_add_permission (s_con, "user", *iter, NULL))
-				PARSE_WARNING ("invalid USERS item '%s'", *iter);
-		}
-	}
-
-	nm_clear_g_free (&value);
+nm_setting_connection_add_permission (s_con, "user", *iter, NULL);
 #endif
 
 #if 0  /* TODO: Support ZONE (firewall), Secondary UUIDs, etc. */
-	v = svGetValueStr (netplan, "ZONE", &value);
-	g_object_set (s_con, NM_SETTING_CONNECTION_ZONE, v, NULL);
-
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "SECONDARY_UUIDS", &value);
-	if (v) {
-		gs_free const char **items = NULL;
-
-		items = nm_utils_strsplit_set (v, " \t");
-		for (iter = items; iter && *iter; iter++) {
-			if (!nm_setting_connection_add_secondary (s_con, *iter))
-				PARSE_WARNING ("secondary connection UUID '%s' already added", *iter);
-		}
-	}
-
-	nm_clear_g_free (&value);
+NM_SETTING_CONNECTION_ZONE
+nm_setting_connection_add_secondary (s_con, *iter);
 #endif
 
 	v = nd->bridge;
@@ -361,152 +222,30 @@ make_connection_setting (const char *file,
 	//check_if_team_slave (nd, s_con);
 
 #if 0  /* TODO: OVS support */
-	v = svGetValueStr (netplan, "OVS_PORT_UUID", &value);
-	if (!v)
-		v = svGetValueStr (netplan, "OVS_PORT", &value);
-	if (v) {
-		const char *old_value;
-
-		if ((old_value = nm_setting_connection_get_master (s_con))) {
-			PARSE_WARNING ("Already configured as slave of %s. Ignoring OVS_PORT=\"%s\"",
-			               old_value, v);
-		} else {
-			g_object_set (s_con, NM_SETTING_CONNECTION_MASTER, v, NULL);
-			g_object_set (s_con, NM_SETTING_CONNECTION_SLAVE_TYPE,
-			              NM_SETTING_OVS_PORT_SETTING_NAME, NULL);
-		}
-	}
-
-	nm_clear_g_free (&value);
-#endif  /* OVS support */
+NM_SETTING_CONNECTION_MASTER
+NM_SETTING_CONNECTION_SLAVE_TYPE (NM_SETTING_OVS_PORT_SETTING_NAME)
+#endif
 
 #if 0  /* TODO: more random settings that are NM-specific */
-	v = svGetValueStr (netplan, "GATEWAY_PING_TIMEOUT", &value);
-	if (v) {
-		gint64 tmp;
-
-		tmp = _nm_utils_ascii_str_to_int64 (v, 10, 0, G_MAXINT32 - 1, -1);
-		if (tmp >= 0) {
-			if (tmp > 600) {
-				tmp = 600;
-				PARSE_WARNING ("invalid GATEWAY_PING_TIMEOUT time");
-			}
-			g_object_set (s_con, NM_SETTING_CONNECTION_GATEWAY_PING_TIMEOUT, (guint) tmp, NULL);
-		} else
-			PARSE_WARNING ("invalid GATEWAY_PING_TIMEOUT time");
-	}
-
-	switch (svGetValueBoolean (netplan, "CONNECTION_METERED", -1)) {
-	case TRUE:
-		g_object_set (s_con, NM_SETTING_CONNECTION_METERED, NM_METERED_YES, NULL);
-		break;
-	case FALSE:
-		g_object_set (s_con, NM_SETTING_CONNECTION_METERED, NM_METERED_NO, NULL);
-		break;
-	}
-
-	vint64 = svGetValueInt64 (netplan, "AUTH_RETRIES", 10, -1, G_MAXINT32, -1);
-	g_object_set (s_con, NM_SETTING_CONNECTION_AUTH_RETRIES, (int) vint64, NULL);
-
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "DEVTIMEOUT", &value);
-	if (v) {
-		vint64 = _nm_utils_ascii_str_to_int64 (v, 10, 0, ((gint64) G_MAXINT32) / 1000, -1);
-		if (vint64 != -1)
-			vint64 *= 1000;
-		else {
-			char *endptr;
-			double d;
-
-			d = g_ascii_strtod (v, &endptr);
-			if (   errno == 0
-			    && endptr[0] == '\0'
-			    && d >= 0.0) {
-				d *= 1000.0;
-
-				/* We round. Yes, this is not correct to round IEEE 754 floats in general,
-				 * but sufficient for our case where we know that NetworkManager wrote the
-				 * setting with up to 3 digits for the milliseconds. */
-				d += 0.5;
-				if (   d >= 0.0
-				    && d <= (double) G_MAXINT32)
-					vint64 = (gint64) d;
-			}
-		}
-		if (vint64 == -1)
-			PARSE_WARNING ("invalid DEVTIMEOUT setting");
-		else
-			g_object_set (s_con, NM_SETTING_CONNECTION_WAIT_DEVICE_TIMEOUT, (int) vint64, NULL);
-	}
-
-	i_val = NM_SETTING_CONNECTION_MDNS_DEFAULT;
-	if (!svGetValueEnum (netplan, "MDNS",
-	                     nm_setting_connection_mdns_get_type (),
-	                     &i_val, NULL))
-		PARSE_WARNING ("invalid MDNS setting");
-	g_object_set (s_con, NM_SETTING_CONNECTION_MDNS, i_val, NULL);
+NM_SETTING_CONNECTION_GATEWAY_PING_TIMEOUT
+NM_SETTING_CONNECTION_METERED
+NM_SETTING_CONNECTION_AUTH_RETRIES
+NM_SETTING_CONNECTION_WAIT_DEVICE_TIMEOUT
+NM_SETTING_CONNECTION_MDNS
 #endif
 
 #if 0  /* TODO: LLMNR settings support */
-	i_val = NM_SETTING_CONNECTION_LLMNR_DEFAULT;
-	if (!svGetValueEnum (netplan, "LLMNR",
-	                     nm_setting_connection_llmnr_get_type (),
-	                     &i_val, NULL))
-		PARSE_WARNING ("invalid LLMNR setting");
-	g_object_set (s_con, NM_SETTING_CONNECTION_LLMNR, i_val, NULL);
+NM_SETTING_CONNECTION_LLMNR
 #endif
 
 	return NM_SETTING (s_con);
 }
 
-#if 0
+#if 0  /* TODO: Parse through the GArray of addresses and pick just the ipv4 (static addresses) */
 static gboolean
-read_ip4_address (NetplanNetDefinition *nd,
-                  const char *tag,
-                  gboolean *out_has_key,
-                  guint32 *out_addr,
-                  GError **error)
-{
-	//const char *value;
-	//in_addr_t a;
-
-	nm_assert (nd);
-	nm_assert (tag);
-	nm_assert (!error || !*error);
-
-	// TODO: Parse through the GArray of addresses and pick just the ipv4 (static addresses)
-
-	return TRUE;
-}
-
+read_ip4_address (NetplanNetDefinition *nd, const char *tag, gboolean *out_has_key, guint32 *out_addr, GError **error)
 static gboolean
 is_any_ip4_address_defined (NetplanNetDefinition *nd, int *idx)
-{
-	int i, ignore, *ret_idx;
-
-	ret_idx = idx ?: &ignore;
-
-	for (i = -1; i <= 2; i++) {
-		gs_free char *value = NULL;
-		char tag[256];
-
-		if (svGetValueStr (netplan, numbered_tag (tag, "IPADDR", i), &value)) {
-			*ret_idx = i;
-			return TRUE;
-		}
-
-		if (svGetValueStr (netplan, numbered_tag (tag, "PREFIX", i), &value)) {
-			*ret_idx = i;
-			return TRUE;
-		}
-
-		if (svGetValueStr (netplan, numbered_tag (tag, "NETMASK", i), &value)) {
-			*ret_idx = i;
-			return TRUE;
-		}
-	}
-	return FALSE;
-}
 #endif
 
 /*****************************************************************************/
@@ -577,44 +316,10 @@ parse_full_ip6_address (NetplanNetDefinition *nd,
 #if 0   /* TODO: Support user settings in netplan schema */
 static NMSetting *
 make_user_setting (NetplanNetDefinition *nd)
-{
-	gboolean has_user_data = FALSE;
-	gs_unref_object NMSettingUser *s_user = NULL;
-	gs_unref_hashtable GHashTable *keys = NULL;
-	GHashTableIter iter;
-	const char *key;
-	nm_auto_free_gstring GString *str = NULL;
 
-	g_hash_table_iter_init (&iter, keys);
-	while (g_hash_table_iter_next (&iter, (gpointer *) &key, NULL)) {
-		const char *value;
-		gs_free char *value_to_free = NULL;
-
-		value = svGetValue (netplan, key, &value_to_free);
-
-		if (!value)
-			continue;
-
-		if (!str)
-			str = g_string_sized_new (100);
-		else
-			g_string_set_size (str, 0);
-
-		if (!nms_netplan_utils_user_key_decode (key + NM_STRLEN ("NM_USER_"), str))
-			continue;
-
-		if (!s_user)
-			s_user = NM_SETTING_USER (nm_setting_user_new ());
-
-		if (nm_setting_user_set_data (s_user, str->str,
-		                              value, NULL))
-			has_user_data = TRUE;
-	}
-
-	return   has_user_data
-	       ? NM_SETTING (g_steal_pointer (&s_user))
-	       : NULL;
-}
+nms_netplan_utils_user_key_decode (key + NM_STRLEN ("NM_USER_"), str)
+s_user = NM_SETTING_USER (nm_setting_user_new ());
+nm_setting_user_set_data (s_user, str->str, value, NULL))
 #endif /* user settings */
 
 static NMSetting *
@@ -637,53 +342,13 @@ make_match_setting (NetplanNetDefinition *nd)
 #if 0  /* TODO: proxy support */
 static NMSetting *
 make_proxy_setting (NetplanNetDefinition *nd)
-{
-	NMSettingProxy *s_proxy = NULL;
-	gs_free char *value = NULL;
-	const char *v;
-	NMSettingProxyMethod method;
 
-	v = svGetValueStr (netplan, "PROXY_METHOD", &value);
-	if (!v)
-		return NULL;
-
-	if (!g_ascii_strcasecmp (v, "auto"))
-		method = NM_SETTING_PROXY_METHOD_AUTO;
-	else
-		method = NM_SETTING_PROXY_METHOD_NONE;
-
-	s_proxy = (NMSettingProxy *) nm_setting_proxy_new ();
-
-	switch (method) {
-	case NM_SETTING_PROXY_METHOD_AUTO:
-		g_object_set (s_proxy,
-		              NM_SETTING_PROXY_METHOD, (int) NM_SETTING_PROXY_METHOD_AUTO,
-		              NULL);
-
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "PAC_URL", &value);
-		if (v)
-			g_object_set (s_proxy, NM_SETTING_PROXY_PAC_URL, v, NULL);
-
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "PAC_SCRIPT", &value);
-		if (v)
-			g_object_set (s_proxy, NM_SETTING_PROXY_PAC_SCRIPT, v, NULL);
-
-		break;
-	case NM_SETTING_PROXY_METHOD_NONE:
-		g_object_set (s_proxy,
-		              NM_SETTING_PROXY_METHOD, (int) NM_SETTING_PROXY_METHOD_NONE,
-		              NULL);
-		break;
-	}
-
-	if (svGetValueBoolean (netplan, "BROWSER_ONLY", FALSE))
-		g_object_set (s_proxy, NM_SETTING_PROXY_BROWSER_ONLY, TRUE, NULL);
-
-	return NM_SETTING (s_proxy);
-}
-#endif  /* proxy support */
+s_proxy = (NMSettingProxy *) nm_setting_proxy_new ();
+NM_SETTING_PROXY_METHOD
+NM_SETTING_PROXY_PAC_URL
+NM_SETTING_PROXY_PAC_SCRIPT
+NM_SETTING_PROXY_BROWSER_ONLY
+#endif
 
 static void
 make_routes (NetplanNetDefinition *nd, NMSettingIPConfig *s_ip, guint family)
@@ -721,83 +386,14 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
 
 #if 0  /* TODO: Review defroute magic for never-default */
-	const char *v;
-	const char *dns_options = NULL;
-	int i;
-	guint32 a;
-	gboolean has_key;
-	gboolean never_default;
-	gint64 timeout;
-	int priority;
-	const char *const *item;
-	guint32 route_table;
-
-	nm_assert (out_has_defroute && !*out_has_defroute);
-
-	/* First check if DEFROUTE is set for this device; DEFROUTE has the
-	 * opposite meaning from never-default. The default if DEFROUTE is not
-	 * specified is DEFROUTE=yes which means that this connection can be used
-	 * as a default route
-	 */
-	i = svGetValueBoolean (netplan, "DEFROUTE", -1);
-	if (i == -1)
-		never_default = FALSE;
-	else {
-		never_default = !i;
-		*out_has_defroute = TRUE;
-	}
-
-	/* Then check if GATEWAYDEV; it's global and overrides DEFROUTE */
-	if (network_netplan) {
-		gs_free char *gatewaydev_value = NULL;
-		const char *gatewaydev;
-
-		/* Get the connection netplan device name and the global gateway device */
-		v = svGetValueStr (netplan, "DEVICE", &value);
-		gatewaydev = svGetValueStr (network_netplan, "GATEWAYDEV", &gatewaydev_value);
-		dns_options = svGetValue (network_netplan, "RES_OPTIONS", &dns_options_free);
-
-		/* If there was a global gateway device specified, then only connections
-		 * for that device can be the default connection.
-		 */
-		if (gatewaydev && v)
-			never_default = !!strcmp (v, gatewaydev);
-
-		nm_clear_g_free (&value);
-	}
-
-	v = svGetValueStr (netplan, "BOOTPROTO", &value);
-
-	if (!v || !*v || !g_ascii_strcasecmp (v, "none")) {
-		if (is_any_ip4_address_defined (netplan, NULL))
-			method = NM_SETTING_IP4_CONFIG_METHOD_MANUAL;
-		else
-			method = NM_SETTING_IP4_CONFIG_METHOD_DISABLED;
-	} else if (!g_ascii_strcasecmp (v, "bootp") || !g_ascii_strcasecmp (v, "dhcp")) {
-		method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
-	} else if (!g_ascii_strcasecmp (v, "static")) {
-		if (is_any_ip4_address_defined (netplan, NULL))
-			method = NM_SETTING_IP4_CONFIG_METHOD_MANUAL;
-		else
-			method = NM_SETTING_IP4_CONFIG_METHOD_DISABLED;
-	} else if (!g_ascii_strcasecmp (v, "autoip")) {
-		method = NM_SETTING_IP4_CONFIG_METHOD_LINK_LOCAL;
-	} else if (!g_ascii_strcasecmp (v, "shared")) {
-		method = NM_SETTING_IP4_CONFIG_METHOD_SHARED;
-	} else {
-		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-		             "Unknown BOOTPROTO '%s'", v);
-		return NULL;
-	}
-
-	/* the route table (policy routing) is ignored if we don't handle routes. */
-	route_table = svGetValueInt64 (netplan, "IPV4_ROUTE_TABLE", 10,
-	                               0, G_MAXUINT32, 0);
-	if (   route_table != 0
-	    && !routes_read) {
-		PARSE_WARNING ("'rule-' or 'rule6-' files are present; Policy routing (IPV4_ROUTE_TABLE) is ignored");
-		route_table = 0;
-	}
+NM_SETTING_IP4_CONFIG_METHOD_*
+ifcfg-rh:
+DEFROUTE
+DEVICE
+GATEWAYDEV
+RES_OPTIONS
+BOOTPROTO
+IPV4_ROUTE_TABLE
 #endif
 
 	if (nd->ip4_addresses)
@@ -826,29 +422,9 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	if (nd->dhcp4 && !nd->dhcp4_overrides.send_hostname)
 		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME, FALSE, NULL);
 #if 0
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "DHCP_HOSTNAME", &value);
-	if (v)
-		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, v, NULL);
-
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "DHCP_FQDN", &value);
-	if (v) {
-		g_object_set (s_ip4,
-		              NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, NULL,
-		              NM_SETTING_IP4_CONFIG_DHCP_FQDN, v,
-		              NULL);
-	}
-
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME, svGetValueBoolean (netplan, "DHCP_SEND_HOSTNAME", TRUE),
-	              NM_SETTING_IP_CONFIG_DHCP_TIMEOUT, svGetValueInt64 (netplan, "IPV4_DHCP_TIMEOUT", 10, 0, G_MAXINT32, 0),
-	              NULL);
-
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "DHCP_CLIENT_ID", &value);
-	if (v)
-		g_object_set (s_ip4, NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID, v, NULL);
+NM_SETTING_IP_CONFIG_DHCP_TIMEOUT
+NM_SETTING_IP4_CONFIG_DHCP_FQDN
+NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID
 #endif
 
 	/* Read static IP addresses.
@@ -867,7 +443,6 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	}
 
 #if 0
-
 	if (gateway && never_default)
 		PARSE_WARNING ("GATEWAY will be ignored when DEFROUTE is disabled");
 #endif
@@ -883,79 +458,25 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 												 g_array_index(nd->search_domains, char*, i));
 
 #if 0  /* TODO: Implement read for connection sharing. */
-	/* We used to skip saving a lot of unused properties for the ipv4 shared method.
-	 * We want now to persist them but... unfortunately loading DNS or DOMAIN options
-	 * would cause a fail in the ipv4 verify() function. As we don't want any regression
-	 * in the unlikely event that someone has a working netplan file for an IPv4 shared ip
-	 * connection with a crafted "DNS" entry... don't load it. So we will avoid failing
-	 * the connection) */
-	if (!nm_streq (method, NM_SETTING_IP4_CONFIG_METHOD_SHARED)) {
-		/* DNS servers
-		 * Pick up just IPv4 addresses (IPv6 addresses are taken by make_ip6_setting())
-		 */
-		for (i = 1; i <= 10; i++) {
-			char tag[256];
-
-			numbered_tag (tag, "DNS", i);
-			nm_clear_g_free (&value);
-			v = svGetValueStr (netplan, tag, &value);
-			if (v) {
-				if (nm_utils_ipaddr_valid (AF_INET, v)) {
-					if (!nm_setting_ip_config_add_dns (s_ip4, v))
-						PARSE_WARNING ("duplicate DNS server %s", tag);
-				} else if (nm_utils_ipaddr_valid (AF_INET6, v)) {
-					/* Ignore IPv6 addresses */
-				} else {
-					PARSE_WARNING ("invalid DNS server address %s", v);
-					return NULL;
-				}
-			}
-		}
-
-		/* DNS searches */
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "DOMAIN", &value);
-		if (v) {
-			gs_free const char **searches = NULL;
-
-			searches = nm_utils_strsplit_set (v, " ");
-			if (searches) {
-				for (item = searches; *item; item++) {
-					if (!nm_setting_ip_config_add_dns_search (s_ip4, *item))
-						PARSE_WARNING ("duplicate DNS domain '%s'", *item);
-				}
-			}
-		}
-	}
-
-	/* DNS options */
-	nm_clear_g_free (&value);
-	parse_dns_options (s_ip4, svGetValue (netplan, "RES_OPTIONS", &value));
-	parse_dns_options (s_ip4, dns_options);
-#endif /* shared */
+NM_SETTING_IP4_CONFIG_METHOD_SHARED
+nm_setting_ip_config_add_dns (s_ip4, v)
+nm_setting_ip_config_add_dns_search (s_ip4, *item)
+ifcfg-rh:
+DNS
+DOMAIN
+RES_OPTIONS
+#endif
 
 #if 0  /* TODO: DNS priority */
-	/* DNS priority */
-	priority = svGetValueInt64 (netplan, "IPV4_DNS_PRIORITY", 10, G_MININT32, G_MAXINT32, 0);
-	g_object_set (s_ip4,
-	              NM_SETTING_IP_CONFIG_DNS_PRIORITY,
-	              priority,
-	              NULL);
+NM_SETTING_IP_CONFIG_DNS_PRIORITY
 #endif
 
 	if (nd->routes)
 		make_routes(nd, s_ip4, AF_INET);
 
 #if 0 /* TODO: dad-timeout */
-	timeout = svGetValueInt64 (netplan, "ACD_TIMEOUT", 10, -1, NM_SETTING_IP_CONFIG_DAD_TIMEOUT_MAX, -2);
-	if (timeout == -2) {
-		timeout = svGetValueInt64 (netplan, "ARPING_WAIT", 10, -1,
-		                           NM_SETTING_IP_CONFIG_DAD_TIMEOUT_MAX / 1000, -1);
-		if (timeout > 0)
-			timeout *= 1000;
-	}
-	g_object_set (s_ip4, NM_SETTING_IP_CONFIG_DAD_TIMEOUT, (int) timeout, NULL);
-#endif  /* DNS prio, routes */
+NM_SETTING_IP_CONFIG_DAD_TIMEOUT
+#endif
 
 	return NM_SETTING (g_steal_pointer (&s_ip4));
 }
@@ -991,114 +512,32 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	s_ip6 = (NMSettingIPConfig *) nm_setting_ip6_config_new ();
 
 #if 0  /* TODO: never-default for ipv6 */
-	/* First check if IPV6_DEFROUTE is set for this device; IPV6_DEFROUTE has the
-	 * opposite meaning from never-default. The default if IPV6_DEFROUTE is not
-	 * specified is IPV6_DEFROUTE=yes which means that this connection can be used
-	 * as a default route
-	 */
-	never_default = !svGetValueBoolean (netplan, "IPV6_DEFROUTE", TRUE);
+ifcfg-rh:
+IPV6_DEFROUTE
 #endif
 
 #if 0  /* TODO: ipv6 gateway and all */
-	/* Then check if IPV6_DEFAULTGW or IPV6_DEFAULTDEV is specified;
-	 * they are global and override IPV6_DEFROUTE
-	 * When both are set, the device specified in IPV6_DEFAULTGW takes preference.
-	 */
-	if (network_netplan) {
-		const char *ipv6_defaultgw, *ipv6_defaultdev;
-		gs_free char *ipv6_defaultgw_to_free = NULL;
-		gs_free char *ipv6_defaultdev_to_free = NULL;
-		const char *default_dev = NULL;
-
-		/* Get the connection netplan device name and the global default route device */
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "DEVICE", &value);
-		ipv6_defaultgw = svGetValueStr (network_netplan, "IPV6_DEFAULTGW", &ipv6_defaultgw_to_free);
-		ipv6_defaultdev = svGetValueStr (network_netplan, "IPV6_DEFAULTDEV", &ipv6_defaultdev_to_free);
-
-		if (ipv6_defaultgw) {
-			default_dev = strchr (ipv6_defaultgw, '%');
-			if (default_dev)
-				default_dev++;
-		}
-		if (!default_dev)
-			default_dev = ipv6_defaultdev;
-
-		/* If there was a global default route device specified, then only connections
-		 * for that device can be the default connection.
-		 */
-		if (default_dev && v)
-			never_default = !!strcmp (v, default_dev);
-	}
-
-	/* Find out method property */
-	/* Is IPV6 enabled? Set method to "ignored", when not enabled */
-	disabled = svGetValueBoolean(netplan, "IPV6_DISABLED", FALSE);
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "IPV6INIT", &value);
-	ipv6init = svGetValueBoolean (netplan, "IPV6INIT", FALSE);
-	if (!v) {
-		if (network_netplan)
-			ipv6init = svGetValueBoolean (network_netplan, "IPV6INIT", FALSE);
-	}
-#endif  /* defaults ipv6 */
+ifcfg-rh:
+DEVICE
+IPV6_DEFAULTGW
+IPV6_DEFAULTDEV
+IPV6_DISABLED
+IPV6INIT
+#endif
 
 #if 0  /* TODO: ipv6 config methods */
-	if (disabled)
-		method = NM_SETTING_IP6_CONFIG_METHOD_DISABLED;
-	else if (!ipv6init)
-		method = NM_SETTING_IP6_CONFIG_METHOD_IGNORE;
-	else {
-		ipv6forwarding = svGetValueBoolean (netplan, "IPV6FORWARDING", FALSE);
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "IPV6_AUTOCONF", &value);
-		dhcp6 = svGetValueBoolean (netplan, "DHCPV6C", FALSE);
-
-		if (!g_strcmp0 (v, "shared"))
-			method = NM_SETTING_IP6_CONFIG_METHOD_SHARED;
-		else if (svParseBoolean (v, !ipv6forwarding))
-			method = NM_SETTING_IP6_CONFIG_METHOD_AUTO;
-		else if (dhcp6)
-			method = NM_SETTING_IP6_CONFIG_METHOD_DHCP;
-		else {
-			/* IPV6_AUTOCONF=no and no IPv6 address -> method 'link-local' */
-			nm_clear_g_free (&value);
-			v = svGetValueStr (netplan, "IPV6ADDR", &value);
-			if (!v) {
-				nm_clear_g_free (&value);
-				v = svGetValueStr (netplan, "IPV6ADDR_SECONDARIES", &value);
-			}
-
-			if (!v)
-				method = NM_SETTING_IP6_CONFIG_METHOD_LINK_LOCAL;
-		}
-	}
-
-	/* Read IPv6 Privacy Extensions configuration */
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "IPV6_PRIVACY", &value);
-	if (v) {
-		ip6_privacy = svParseBoolean (v, FALSE);
-		if (!ip6_privacy)
-			ip6_privacy = (g_strcmp0 (v, "rfc4941") == 0) ||
-			              (g_strcmp0 (v, "rfc3041") == 0);
-	}
-	ip6_privacy_prefer_public_ip = svGetValueBoolean (netplan, "IPV6_PRIVACY_PREFER_PUBLIC_IP", FALSE);
-	ip6_privacy_val = v ?
-	                      (ip6_privacy ?
-	                          (ip6_privacy_prefer_public_ip ? NM_SETTING_IP6_CONFIG_PRIVACY_PREFER_PUBLIC_ADDR : NM_SETTING_IP6_CONFIG_PRIVACY_PREFER_TEMP_ADDR) :
-	                          NM_SETTING_IP6_CONFIG_PRIVACY_DISABLED) :
-	                      NM_SETTING_IP6_CONFIG_PRIVACY_UNKNOWN;
-
-	/* the route table (policy routing) is ignored if we don't handle routes. */
-	route_table = svGetValueInt64 (netplan, "IPV6_ROUTE_TABLE", 10,
-	                               0, G_MAXUINT32, 0);
-	if (   route_table != 0
-	    && !routes_read) {
-		PARSE_WARNING ("'rule-' or 'rule6-' files are present; Policy routing (IPV6_ROUTE_TABLE) is ignored");
-		route_table = 0;
-	}
-#endif  /* ipv6 methods and settings */
+NM_SETTING_IP6_CONFIG_METHOD_*
+NM_SETTING_IP6_CONFIG_PRIVACY_*
+ifcfg-rh:
+IPV6FORWARDING
+DHCPV6C
+IPV6_AUTOCONF
+IPV6ADDR
+IPV6ADDR_SECONDARIES
+IPV6_PRIVACY
+IPV6_PRIVACY_PREFER_PUBLIC_IP
+IPV6_ROUTE_TABLE
+#endif
 
 	/* Skip if we have neither static nor dynamic IP6 config */
 	if (!nd->ip6_addresses && !nd->dhcp6) {
@@ -1126,8 +565,7 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 	              NM_SETTING_IP6_CONFIG_IP6_PRIVACY, NM_SETTING_IP6_CONFIG_PRIVACY_UNKNOWN,
 	              NULL);
 
-#if 0
-	/* Don't bother to read IP, DNS and routes when IPv6 is disabled */
+#if 0  /* TODO: Don't bother to read IP, DNS and routes when IPv6 is disabled */
 	if (NM_IN_STRSET (method, NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
 	                          NM_SETTING_IP6_CONFIG_METHOD_DISABLED))
 		return NM_SETTING (g_steal_pointer (&s_ip6));
@@ -1140,29 +578,16 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 		g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME, FALSE, NULL);
 
 #if 0  /* TODO: Implement IPv6 DUID, hostname and special DHCP options */
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "DHCPV6_DUID", &value);
-	if (v)
-		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_DHCP_DUID, v, NULL);
-
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "DHCPV6_HOSTNAME", &value);
-	/* Use DHCP_HOSTNAME as fallback if it is in FQDN format and ipv6.method is
-	 * auto or dhcp: this is required to support old netplan files
-	 */
-	if (!v && (   !strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_AUTO)
-		       || !strcmp (method, NM_SETTING_IP6_CONFIG_METHOD_DHCP))) {
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "DHCP_HOSTNAME", &value);
-		if (v && !strchr (v, '.'))
-			v = NULL;
-	}
-	if (v)
-		g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_HOSTNAME, v, NULL);
-
-	g_object_set (s_ip6, NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME,
-	              svGetValueBoolean (netplan, "DHCPV6_SEND_HOSTNAME", TRUE), NULL);
-#endif  /* IPv6 DUID, hostname and special DHCP options */
+NM_SETTING_IP6_CONFIG_DHCP_DUID
+NM_SETTING_IP6_CONFIG_METHOD_*
+NM_SETTING_IP_CONFIG_DHCP_HOSTNAME
+NM_SETTING_IP_CONFIG_DHCP_SEND_HOSTNAME
+ifcfg-rh:
+DHCPV6_DUID
+DHCPV6_HOSTNAME
+DHCP_HOSTNAME
+DHCPV6_SEND_HOSTNAME
+#endif
 
 	/* Read static IP addresses. */
 	if (nd->ip6_addresses) {
@@ -1181,59 +606,20 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 										  g_array_index(nd->ip6_nameservers, char*, i));
 
 #if 0  /* TODO: IPv6: read static addresses. */
-	ipv6addr = svGetValueStr (netplan, "IPV6ADDR", &ipv6addr_to_free);
-	ipv6addr_secondaries = svGetValueStr (netplan, "IPV6ADDR_SECONDARIES", &ipv6addr_secondaries_to_free);
-
-	nm_clear_g_free (&value);
-	value = g_strjoin (ipv6addr && ipv6addr_secondaries ? " " : NULL,
-	                   ipv6addr ?: "",
-	                   ipv6addr_secondaries ?: "",
-	                   NULL);
-
-	list = nm_utils_strsplit_set (value, " ");
-	for (iter = list, i = 0; iter && *iter; iter++, i++) {
-		NMIPAddress *addr = NULL;
-
-		if (!parse_full_ip6_address (netplan, *iter, i, &addr, error))
-			return NULL;
-
-		if (!nm_setting_ip_config_add_address (s_ip6, addr))
-			PARSE_WARNING ("duplicate IP6 address");
-		nm_ip_address_unref (addr);
-	}
-#endif  /* IPv6: read static addresses. */
+parse_full_ip6_address (netplan, *iter, i, &addr, error)
+nm_setting_ip_config_add_address (s_ip6, addr)
+ifcfg-rh:
+IPV6ADDR
+IPV6ADDR_SECONDARIES
+#endif
 
 #if 0  /* IPv6: read gateway. */
-	/* Gateway */
-	if (nm_setting_ip_config_get_num_addresses (s_ip6)) {
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, "IPV6_DEFAULTGW", &value);
-		if (!v) {
-			/* If no gateway in the netplan, try global /etc/sysconfig/network instead */
-			if (network_netplan) {
-				nm_clear_g_free (&value);
-				v = svGetValueStr (network_netplan, "IPV6_DEFAULTGW", &value);
-			}
-		}
-		if (v) {
-			char *ptr;
-			if ((ptr = strchr (v, '%')) != NULL)
-				*ptr = '\0';  /* remove %interface prefix if present */
-			if (!nm_utils_ipaddr_valid (AF_INET6, v)) {
-				g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-				             "Invalid IP6 address '%s'", v);
-				return NULL;
-			}
-
-			g_object_set (s_ip6, NM_SETTING_IP_CONFIG_GATEWAY, v, NULL);
-		}
-	}
-
-	/* IPv6 tokenized interface identifier */
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "IPV6_TOKEN", &value);
-	if (v)
-		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_TOKEN, v, NULL);
+nm_setting_ip_config_get_num_addresses (s_ip6)
+NM_SETTING_IP_CONFIG_GATEWAY
+NM_SETTING_IP6_CONFIG_TOKEN
+ifcfg-rh:
+IPV6_DEFAULTGW
+IPV6_TOKEN
 #endif
 
 	/* IPv6 Address generation mode */
@@ -1245,61 +631,21 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 		              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64, NULL);
 
 #if 0  /* TODO: set dns servers */
-	/* DNS servers
-	 * Pick up just IPv6 addresses (IPv4 addresses are taken by make_ip4_setting())
-	 */
-	for (i = 1; i <= 10; i++) {
-		char tag[256];
-
-		numbered_tag (tag, "DNS", i);
-		nm_clear_g_free (&value);
-		v = svGetValueStr (netplan, tag, &value);
-		if (!v) {
-			/* all done */
-			break;
-		}
-
-		if (nm_utils_ipaddr_valid (AF_INET6, v)) {
-			if (!nm_setting_ip_config_add_dns (s_ip6, v))
-				PARSE_WARNING ("duplicate DNS server %s", tag);
-		} else if (nm_utils_ipaddr_valid (AF_INET, v)) {
-			/* Ignore IPv4 addresses */
-		} else {
-			PARSE_WARNING ("invalid DNS server address %s", v);
-			return NULL;
-		}
-	}
+nm_setting_ip_config_add_dns (s_ip6, v)
+ifcfg-rh:
+DNS
 #endif
 
 	if (nd->routes)
 		make_routes(nd, s_ip6, AF_INET6);
 
 #if 0  /* TODO: IPv6 DNS searches */
-	/* DNS searches */
-	nm_clear_g_free (&value);
-	v = svGetValueStr (netplan, "IPV6_DOMAIN", &value);
-	if (v) {
-		gs_free const char **searches = NULL;
-
-		searches = nm_utils_strsplit_set (v, " ");
-		if (searches) {
-			for (iter = searches; *iter; iter++) {
-				if (!nm_setting_ip_config_add_dns_search (s_ip6, *iter))
-					PARSE_WARNING ("duplicate DNS domain '%s'", *iter);
-			}
-		}
-	}
-
-	/* DNS options */
-	nm_clear_g_free (&value);
-	parse_dns_options (s_ip6, svGetValue (netplan, "IPV6_RES_OPTIONS", &value));
-
-	/* DNS priority */
-	priority = svGetValueInt64 (netplan, "IPV6_DNS_PRIORITY", 10, G_MININT32, G_MAXINT32, 0);
-	g_object_set (s_ip6,
-	              NM_SETTING_IP_CONFIG_DNS_PRIORITY,
-	              priority,
-	              NULL);
+nm_setting_ip_config_add_dns_search (s_ip6, *iter)
+NM_SETTING_IP_CONFIG_DNS_PRIORITY
+ifcfg-rh:
+IPV6_DOMAIN
+IPV6_RES_OPTIONS
+IPV6_DNS_PRIORITY
 #endif
 
 	return NM_SETTING (g_steal_pointer (&s_ip6));
@@ -1310,139 +656,33 @@ make_ip6_setting (NetplanNetDefinition *nd, GError **error)
 /* TODO: Implement DCB support */
 /* There is useful code to look at in ifcfg-rh plugin ~cyphermox */
 
-#if 0 /* TODO: It looks like we don't really support WEP right now */
+#if 0 /* TODO: Netplan doesn't really support WEP right now */
 static gboolean
-add_one_wep_key (NetplanNetDefinition *nd,
-                 const char *shvar_key,
-                 guint8 key_idx,
-                 gboolean passphrase,
-                 NMSettingWirelessSecurity *s_wsec,
-                 GError **error)
-{
-	gs_free char *value_free = NULL;
-	const char *value;
-	const char *key = NULL;
+add_one_wep_key (NetplanNetDefinition *nd, const char *shvar_key, guint8 key_idx, gboolean passphrase, NMSettingWirelessSecurity *s_wsec, GError **error)
 
-	g_return_val_if_fail (nd != NULL, FALSE);
-	g_return_val_if_fail (shvar_key != NULL, FALSE);
-	g_return_val_if_fail (key_idx <= 3, FALSE);
-	g_return_val_if_fail (s_wsec != NULL, FALSE);
+nm_setting_wireless_security_set_wep_key (s_wsec, key_idx, key);
 
-	value = svGetValueStr (ifcfg, shvar_key, &value_free);
-	if (!value)
-		return TRUE;
-
-	/* Validate keys */
-	if (passphrase) {
-		if (value[0] && strlen (value) < 64)
-			key = value;
-	} else {
-		if (NM_IN_SET (strlen (value), 10, 26)) {
-			/* Hexadecimal WEP key */
-			if (NM_STRCHAR_ANY (value, ch, !g_ascii_isxdigit (ch))) {
-				g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-				             "Invalid hexadecimal WEP key.");
-				return FALSE;
-			}
-			key = value;
-		} else if (   !strncmp (value, "s:", 2)
-		           && NM_IN_SET (strlen (value), 7, 15)) {
-			/* ASCII key */
-			if (NM_STRCHAR_ANY (value + 2, ch, !g_ascii_isprint (ch))) {
-				g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-				             "Invalid ASCII WEP key.");
-				return FALSE;
-			}
-
-			/* Remove 's:' prefix.
-			 * Don't convert to hex string. wpa_supplicant takes 'wep_key0' option over D-Bus as byte array
-			 * and converts it to hex string itself. Even though we convert hex string keys into a bin string
-			 * before passing to wpa_supplicant, this prevents two unnecessary conversions. And mainly,
-			 * ASCII WEP key doesn't change to HEX WEP key in UI, which could confuse users.
-			 */
-			key = value + 2;
-		}
-	}
-
-	if (!key) {
-		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-		             "Invalid WEP key length.");
-		return FALSE;
-	}
-
-	nm_setting_wireless_security_set_wep_key (s_wsec, key_idx, key);
-	return TRUE;
-}
 
 static gboolean
-read_wep_keys (NetplanNetDefinition *nd,
-               NMWepKeyType key_type,
-               guint8 def_idx,
-               NMSettingWirelessSecurity *s_wsec,
-               GError **error)
-{
-	if (key_type != NM_WEP_KEY_TYPE_PASSPHRASE) {
-		if (!add_one_wep_key (nd, "KEY1", 0, FALSE, s_wsec, error))
-			return FALSE;
-		if (!add_one_wep_key (nd, "KEY2", 1, FALSE, s_wsec, error))
-			return FALSE;
-		if (!add_one_wep_key (nd, "KEY3", 2, FALSE, s_wsec, error))
-			return FALSE;
-		if (!add_one_wep_key (nd, "KEY4", 3, FALSE, s_wsec, error))
-			return FALSE;
-		if (!add_one_wep_key (nd, "KEY", def_idx, FALSE, s_wsec, error))
-			return FALSE;
-	}
+read_wep_keys (NetplanNetDefinition *nd, NMWepKeyType key_type, guint8 def_idx, NMSettingWirelessSecurity *s_wsec, GError **error)
 
-	if (key_type != NM_WEP_KEY_TYPE_KEY) {
-		if (!add_one_wep_key (nd, "KEY_PASSPHRASE1", 0, TRUE, s_wsec, error))
-			return FALSE;
-		if (!add_one_wep_key (nd, "KEY_PASSPHRASE2", 1, TRUE, s_wsec, error))
-			return FALSE;
-		if (!add_one_wep_key (nd, "KEY_PASSPHRASE3", 2, TRUE, s_wsec, error))
-			return FALSE;
-		if (!add_one_wep_key (nd, "KEY_PASSPHRASE4", 3, TRUE, s_wsec, error))
-			return FALSE;
-	}
-
-	return TRUE;
-}
+NM_WEP_KEY_TYPE_PASSPHRASE
+add_one_wep_key (nd, "KEY1", 0, FALSE, s_wsec, error)
+NM_WEP_KEY_TYPE_KEY
+add_one_wep_key (nd, "KEY_PASSPHRASE1", 0, TRUE, s_wsec, error)
 #endif
 
 #if 0 /* TODO: Implement WEP in netplan */
 static NMSetting *
-make_wep_setting (NetplanNetDefinition *nd,
-                  const char *file,
-                  GError **error)
-{
-	gs_unref_object NMSettingWirelessSecurity *s_wsec = NULL;
-	gs_free char *value = NULL;
-	//int default_key_idx = 0;
-	//gboolean has_default_key = FALSE;
-	//NMSettingSecretFlags key_flags;
+make_wep_setting (NetplanNetDefinition *nd, const char *file, GError **error)
 
-	s_wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
-	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "none", NULL);
-
-	/* TODO: support specifying keyidx for WEP */
-	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_WEP_TX_KEYIDX, 0, NULL);
-
-	/* Read WEP key flags */
-	// TODO: read wifi WEP secret flags.
-	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_WEP_KEY_FLAGS, NM_SETTING_SECRET_FLAG_NONE, NULL);
-
-	g_object_set (G_OBJECT (s_wsec),
-	              NM_SETTING_WIRELESS_SECURITY_WEP_KEY_TYPE, NM_WEP_KEY_TYPE_PASSPHRASE,
-	              NULL);
-
-	g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "open", NULL);
-	/* TODO: Support WEP-only (apparently) "shared" AUTH_ALG... */
-	//g_object_set (s_wsec, NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "shared", NULL);
-
-	nm_setting_wireless_security_set_wep_key (s_wsec, 0, nd->auth.password);
-
-	return NM_SETTING (g_steal_pointer (&s_wsec));
-}
+s_wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
+NM_SETTING_WIRELESS_SECURITY_KEY_MGMT
+NM_SETTING_WIRELESS_SECURITY_WEP_TX_KEYIDX
+NM_SETTING_WIRELESS_SECURITY_WEP_KEY_FLAGS
+NM_SETTING_WIRELESS_SECURITY_WEP_KEY_TYPE
+NM_SETTING_WIRELESS_SECURITY_AUTH_ALG
+nm_setting_wireless_security_set_wep_key (s_wsec, 0, nd->auth.password);
 #endif
 
 static gboolean
@@ -1452,38 +692,15 @@ fill_wpa_ciphers (NetplanNetDefinition *nd,
                   gboolean adhoc)
 {
 #if 0  /* TODO: WPA ciphers selection (not yet in netplan) */
-	gs_free char *value = NULL;
-	const char *p;
-	gs_free const char **list = NULL;
-	const char *const *iter;
-	int i = 0;
-
-	p = svGetValueStr (netplan, group ? "CIPHER_GROUP" : "CIPHER_PAIRWISE", &value);
-	if (!p)
-		return TRUE;
-
-	list = nm_utils_strsplit_set (p, " ");
-	for (iter = list; iter && *iter; iter++, i++) {
-		if (!strcmp (*iter, "CCMP")) {
-			if (group)
-				nm_setting_wireless_security_add_group (wsec, "ccmp");
-			else
-				nm_setting_wireless_security_add_pairwise (wsec, "ccmp");
-		} else if (!strcmp (*iter, "TKIP")) {
-			if (group)
-				nm_setting_wireless_security_add_group (wsec, "tkip");
-			else
-				nm_setting_wireless_security_add_pairwise (wsec, "tkip");
-		} else if (group && !strcmp (*iter, "WEP104"))
-			nm_setting_wireless_security_add_group (wsec, "wep104");
-		else if (group && !strcmp (*iter, "WEP40"))
-			nm_setting_wireless_security_add_group (wsec, "wep40");
-		else {
-			PARSE_WARNING ("ignoring invalid %s cipher '%s'",
-			               group ? "CIPHER_GROUP" : "CIPHER_PAIRWISE",
-			               *iter);
-		}
-	}
+nm_setting_wireless_security_add_group (wsec, "ccmp");
+nm_setting_wireless_security_add_pairwise (wsec, "ccmp");
+nm_setting_wireless_security_add_group (wsec, "tkip");
+nm_setting_wireless_security_add_pairwise (wsec, "tkip");
+nm_setting_wireless_security_add_group (wsec, "wep104");
+nm_setting_wireless_security_add_group (wsec, "wep40");
+ifcfg-rh:
+CIPHER_GROUP
+CIPHER_PAIRWISE
 #endif
 	return TRUE;
 }
@@ -1640,17 +857,12 @@ make_wpa_setting (NetplanNetDefinition *nd,
 			&& ap->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_8021X)
 			return NULL; /* Not WPA or Dynamic WEP */
 
-	#if 0  /* TODO: support WPS */
-		/* WPS */
-		i_val = NM_SETTING_WIRELESS_SECURITY_WPS_METHOD_DEFAULT;
-		if (!svGetValueEnum (netplan, "WPS_METHOD",
-							nm_setting_wireless_security_wps_method_get_type (),
-							&i_val, error))
-			return NULL;
-		g_object_set (wsec,
-					NM_SETTING_WIRELESS_SECURITY_WPS_METHOD, (guint) i_val,
-					NULL);
-	#endif
+#if 0  /* TODO: support WPS */
+nm_setting_wireless_security_wps_method_get_type ()
+NM_SETTING_WIRELESS_SECURITY_WPS_METHOD
+ifcfg-rh:
+WPS_METHOD
+#endif
 
 		/* Pairwise and Group ciphers (only relevant for WPA/RSN) */
 		if (ap->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
@@ -1692,9 +904,9 @@ make_wpa_setting (NetplanNetDefinition *nd,
 	/* TODO: support WPA PMF, FILS */
 
 #if 0
-	v = svGetValueStr (netplan, "SECURITYMODE", &value);
-	if (NM_IN_STRSET (v, NULL, "open"))
-		g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, v, NULL);
+NM_SETTING_WIRELESS_SECURITY_AUTH_ALG
+ifcfg-rh:
+SECURITYMODE
 #endif
 
 	return (NMSetting *) g_steal_pointer (&wsec);
@@ -1702,57 +914,17 @@ make_wpa_setting (NetplanNetDefinition *nd,
 
 #if 0  /* TODO: LEAP not yet supported in netplan yaml */
 static NMSetting *
-make_leap_setting (NetplanNetDefinition *nd,
-                   const char *file,
-                   GError **error)
-{
-	gs_unref_object NMSettingWirelessSecurity *wsec = NULL;
-	gs_free char *value   = NULL;
-	NMSettingSecretFlag  s flags;
-  
-	wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
+make_leap_setting (NetplanNetDefinition *nd, const char *file, GError **error)
 
-	if (nd->auth.key_management != NETPLAN_AUTH_KEY_MANAGEMENT_8021X)
-		return NULL;
-
-	if (nd->auth.eap_method != NETPLAN_AUTH_EAP_LEAP)
-		return NULL; /* Not LEAP */
-
-	flags = _secret_read_netplan_flags (netplan, "IEEE_8021X_PASSWORD_FLAGS");
-	g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD_FLAGS, flags, NULL);
-
-	/* Read LEAP password if it's system-owned */
-	if (flags == NM_SETTING_SECRET_FLAG_NONE) {
-		value = svGetValueStr_cp (netplan, "IEEE_8021X_PASSWORD");
-		if (!value) {
-			/* Try to get keys from the "shadow" key file */
-			k  eys_netplan = utils_get_keys_netplan (file, FALSE);
-  			if (keys_netpl  an) {
-				  value = svGetV    alueStr_cp (keys_netplan, "IEEE_8021X_PASSWORD");
-  				svCloseFile (k      eys_netplan);
-  		    	}
-	    	}
-		if (value && strle  n (value))
-			g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD, value, NULL);
-		nm_clear_g_free (&value);
-	}
-
-	value = svGetValueStr_cp (netplan, "IEEE_8021X_IDENTITY");
-	if (!value) {
-		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-		             "Missing LEAP identity");
-		return NULL;
-	}
-	g_object_set (wsec, NM_SETTING_WIRELESS_SECURITY_LEAP_USERNAME, value, NULL);
-	nm_clear_g_free (&value);
-
-	g_object_set (wsec,
-	              NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "ieee8021x",
-	              NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "leap",
-	              NULL);
-
-	return (NMSetting *) g_steal_pointer (&wsec);
-}
+wsec = NM_SETTING_WIRELESS_SECURITY (nm_setting_wireless_security_new ());
+NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD_FLAGS
+NM_SETTING_WIRELESS_SECURITY_LEAP_PASSWORD
+NM_SETTING_WIRELESS_SECURITY_LEAP_USERNAME
+NM_SETTING_WIRELESS_SECURITY_KEY_MGMT ("ieee8021x")
+NM_SETTING_WIRELESS_SECURITY_AUTH_ALG ("leap")
+ifcfg-rh:
+IEEE_8021X_PASSWORD
+IEEE_8021X_IDENTITY
 #endif
 
 static NMSetting *
@@ -1784,14 +956,14 @@ make_wireless_security_setting (NetplanNetDefinition *nd,
 	else if (*error)
 		return NULL;
 
-	/* XXX: WEP is not supported with netplan.
+#if 0  /* TODO: WEP is not supported with netplan. */
 	 *   Only 'none', 'psk', 'eap' and '802.1x' as handled by make_wpa_setting().
 	wsec = make_wep_setting (nd, file, error);
 	if (wsec)
 		return wsec;
 	else if (*error)
 		return NULL;
-	*/
+#endif
 
 	return NULL; /* unencrypted, open network */
 }
@@ -1908,29 +1080,10 @@ make_wireless_setting (NetplanNetDefinition *nd,
 	              NULL);
 
 #if 0  /* TODO: Add support for MAC address randomization */
-	cvalue = svGetValue (netplan, "MAC_ADDRESS_RANDOMIZATION", &value);
-	if (cvalue) {
-		if (strcmp (cvalue, "default") == 0)
-			mac_randomization = NM_SETTING_MAC_RANDOMIZATION_DEFAULT;
-		else if (strcmp (cvalue, "never") == 0)
-			mac_randomization = NM_SETTING_MAC_RANDOMIZATION_NEVER;
-		else if (strcmp (cvalue, "always") == 0)
-			mac_randomization = NM_SETTING_MAC_RANDOMIZATION_ALWAYS;
-		else {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "Invalid MAC_ADDRESS_RANDOMIZATION value '%s'", cvalue);
-			g_free (value);
-			goto error;
-		}
-		g_free (value);
-	} else
-		mac_randomization = NM_SETTING_MAC_RANDOMIZATION_DEFAULT;
-
-	g_object_set (s_wireless,
-	              NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION,
-	              mac_randomization,
-	              NULL);
-#endif  /* MAC address randomization */
+NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION
+ifcfg-rh:
+MAC_ADDRESS_RANDOMIZATION
+#endif
 
 	return NM_SETTING (s_wireless);
 
@@ -2158,7 +1311,7 @@ read_routing_rules (NetplanNetDefinition *nd,
 			nm_ip_routing_rule_set_table (rule, r->table);
 		if (r->priority != NETPLAN_IP_RULE_PRIO_UNSPEC)
 			nm_ip_routing_rule_set_priority (rule, r->priority);
-		/* XXX: Fix/implement fwmask, which is missing in NetplanNetDefinition. */
+		/* TODO: Implement fwmask, which is missing in NetplanNetDefinition. */
 		if (r->fwmark != NETPLAN_IP_RULE_FW_MARK_UNSPEC)
 			nm_ip_routing_rule_set_fwmark (rule, r->fwmark, 0);
 		if (r->tos != NETPLAN_IP_RULE_TOS_UNSPEC)
@@ -2207,35 +1360,15 @@ make_wired_setting (NetplanNetDefinition *nd,
 	/* TODO: Add subchannels and other s390 options */
 
 #if 0  /* TODO: wired: generate mac address */
-	cvalue = svGetValueStr (netplan, "GENERATE_MAC_ADDRESS_MASK", &value);
-	if (cvalue) {
-		if (cvalue[0] != '\0') {
-			g_object_set (s_wired,
-			              NM_SETTING_WIRED_GENERATE_MAC_ADDRESS_MASK,
-			              cvalue,
-			              NULL);
-		}
-		nm_clear_g_free (&value);
-		found = TRUE;
-	}
-#endif  /* generate mac address */
+NM_SETTING_WIRED_GENERATE_MAC_ADDRESS_MASK
+ifcfg-rh:
+GENERATE_MAC_ADDRESS_MASK
+#endif
 
 #if 0  /* TODO: 802.1x wired settings */
-	cvalue = svGetValue (netplan, "KEY_MGMT", &value);
-	if (cvalue)
-		found = TRUE;
-	if (cvalue && cvalue[0] != '\0') {
-		if (!strcmp (cvalue, "IEEE8021X")) {
-			*s_8021x = fill_8021x (netplan, NULL, file, cvalue, FALSE, error);
-			if (!*s_8021x)
-				return NULL;
-		} else {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "Unknown wired KEY_MGMT type '%s'", cvalue);
-			return NULL;
-		}
-	}
-	nm_clear_g_free (&value);
+*s_8021x = fill_8021x (netplan, NULL, file, cvalue, FALSE, error);
+ifcfg-rh:
+KEY_MGMT
 #endif  /* 802.1x */
 
 	return (NMSetting *) g_steal_pointer (&s_wired);
@@ -2341,7 +1474,7 @@ make_bond_setting (NetplanNetDefinition *nd,
                                 nd->bond_params.learn_interval);
 	nm_setting_bond_add_option (s_bond, NM_SETTING_BOND_OPTION_PRIMARY,
                                 nd->bond_params.primary_slave);
-	// XXX: Needs to be implemented in netplan
+	/* TODO: Needs to be implemented in netplan. */
 	//#define NM_SETTING_BOND_OPTION_ACTIVE_SLAVE      "active_slave"
 	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYS_PRIO "ad_actor_sys_prio"
 	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYSTEM   "ad_actor_system"
@@ -2558,47 +1691,17 @@ make_bridge_port_setting (NetplanNetDefinition *nd)
 #if 0  /* TODO: Team device support */
 static NMSetting *
 make_team_port_setting (NetplanNetDefinition *nd)
-{
-	NMSetting *s_port;
-	gs_free char *value = NULL;
 
-	value = svGetValueStr_cp (netplan, "TEAM_PORT_CONFIG");
-	if (!value)
-		return NULL;
-
-	s_port = nm_setting_team_port_new ();
-	g_object_set (s_port,
-	              NM_SETTING_TEAM_PORT_CONFIG,
-	              value,
-	              NULL);
-	return s_port;
-}
+NM_SETTING_TEAM_PORT_CONFIG
+ifcfg-rh:
+TEAM_PORT_CONFIG
 #endif
 
 #if 0   /* TODO: Advanced VLAN */
 static void
-parse_prio_map_list (NMSettingVlan *s_vlan,
-                     NetplanNetDefinition *nd,
-                     const char *key,
-                     NMVlanPriorityMap map)
-{
-	gs_free char *value = NULL;
-	gs_free const char **list = NULL;
-	const char *const *iter;
-	const char *v;
+parse_prio_map_list (NMSettingVlan *s_vlan, NetplanNetDefinition *nd, const char *key, NMVlanPriorityMap map)
 
-	v = svGetValueStr (netplan, key, &value);
-	if (!v)
-		return;
-	list = nm_utils_strsplit_set (v, ",");
-
-	for (iter = list; iter && *iter; iter++) {
-		if (!strchr (*iter, ':'))
-			continue;
-		if (!nm_setting_vlan_add_priority_str (s_vlan, map, *iter))
-			PARSE_WARNING ("invalid %s priority map item '%s'", key, *iter);
-	}
-}
+!nm_setting_vlan_add_priority_str (s_vlan, map, *iter)
 #endif
 
 static NMSetting *
@@ -2698,8 +1801,7 @@ create_unhandled_connection (const char *filename, NetplanNetDefinition *nd,
 
 	/* Get NAME, UUID, etc. We need to set a connection type (generic) and add
 	 * an empty type-specific setting as well, to make sure it passes
-	 * nm_connection_verify() later.
-	 */
+	 * nm_connection_verify() later. */
 	s_con = make_connection_setting (filename, nd, NM_SETTING_GENERIC_SETTING_NAME,
 	                                 NULL, NULL);
 	nm_connection_add_setting (connection, s_con);
@@ -2716,11 +1818,9 @@ create_unhandled_connection (const char *filename, NetplanNetDefinition *nd,
 	}
 
 #if 0  /* TODO: create unhandled matching for s390 subchannels */
-	v = svGetValueStr (nd, "SUBCHANNELS", &value);
-	if (v) {
-		*out_spec = g_strdup_printf ("%s:"NM_MATCH_SPEC_S390_SUBCHANNELS_TAG"%s", type, v);
-		return connection;
-	}
+*out_spec = g_strdup_printf ("%s:"NM_MATCH_SPEC_S390_SUBCHANNELS_TAG"%s", type, v);
+ifcfg-rh:
+SUBCHANNELS
 #endif
 
 	v = nd->match.original_name;
@@ -2800,96 +1900,21 @@ connection_from_file_full (const char *filename,
 	}
 
 #if 0
-	if (!svGetValueBoolean (main_netplan, "NM_CONTROLLED", TRUE)) {
-		connection = create_unhandled_connection (filename, main_netplan, "unmanaged", out_unhandled);
-		if (!connection) {
-			NM_SET_OUT (out_ignore_error, TRUE);
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
-			             "NM_CONTROLLED was false but device was not uniquely identified; device will be managed");
-		}
-		return g_steal_pointer (&connection);
-	}
-
-	/* iBFT is handled by nm-initrd-generator during boot. */
-	bootproto = svGetValueStr_cp (main_netplan, "BOOTPROTO");
-	if (bootproto && !g_ascii_strcasecmp (bootproto, "ibft")) {
-		NM_SET_OUT (out_ignore_error, TRUE);
-		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-		             "Ignoring iBFT configuration");
-		g_free (bootproto);
-		return NULL;
-	}
-	g_free (bootproto);
-
-	devtype = svGetValueStr_cp (main_netplan, "DEVICETYPE");
-	if (devtype) {
-		if (!strcasecmp (devtype, TYPE_TEAM))
-			type = g_strdup (TYPE_TEAM);
-		else if (!strcasecmp (devtype, TYPE_TEAM_PORT)) {
-			gs_free char *device = NULL;
-
-			type = svGetValueStr_cp (main_netplan, "TYPE");
-			device = svGetValueStr_cp (main_netplan, "DEVICE");
-
-			if (type) {
-				/* nothing to do */
-			} else if (device && nd->type == NETPLAN_DEF_TYPE_VLAN)
-				type = g_strdup (TYPE_VLAN);
-			else
-				type = g_strdup (TYPE_ETHERNET);
-		}
-		g_free (devtype);
-	}
-	if (!type) {
-		gs_free char *t = NULL;
-
-		/* Team and TeamPort types are also accepted by the mere
-		 * presence of TEAM_CONFIG/TEAM_MASTER. They don't require
-		 * DEVICETYPE. */
-		t = svGetValueStr_cp (main_netplan, "TEAM_CONFIG");
-		if (t)
-			type = g_strdup (TYPE_TEAM);
-	}
-
-	if (!type)
-		type = svGetValueStr_cp (main_netplan, "TYPE");
-
-	if (!type) {
-		gs_free char *tmp = NULL;
-		char *device;
-
-		if ((tmp = svGetValueStr_cp (main_netplan, "IPV6TUNNELIPV4"))) {
-			NM_SET_OUT (out_ignore_error, TRUE);
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "Ignoring unsupported connection due to IPV6TUNNELIPV4");
-			return NULL;
-		}
-
-		device = svGetValueStr_cp (main_netplan, "DEVICE");
-		if (!device) {
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "File '%s' had neither TYPE nor DEVICE keys.", filename);
-			return NULL;
-		}
-
-		if (!strcmp (device, "lo")) {
-			NM_SET_OUT (out_ignore_error, TRUE);
-			g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_INVALID_CONNECTION,
-			             "Ignoring loopback device config.");
-			g_free (device);
-			return NULL;
-		}
+connection = create_unhandled_connection (filename, main_netplan, "unmanaged", out_unhandled);
+ifcfg-rh:
+NM_CONTROLLED
+BOOTPROTO
+DEVICETYPE
+TYPE
+DEVICE
+TEAM_CONFIG
+TEAM_MASTER
+IPV6TUNNELIPV4
+IPV6TUNNELIPV4
 #endif
 
-#if 0
-	} else {
-		/* Check for IBM s390 CTC devices and call them Ethernet */
-		if (g_strcmp0 (type, "CTC") == 0) {
-			g_free (type);
-			type = g_strdup (TYPE_ETHERNET);
-		}
-	}
-#endif
+	/* TODO: Check for IBM s390 CTC devices and call them TYPE_ETHERNET */
+
 	if (netdef_id) {
 		/* Select netdef specified by ID. */
 		netdef = g_hash_table_lookup (netdefs, netdef_id);
@@ -2947,7 +1972,7 @@ connection_from_file_full (const char *filename,
 	if (!connection)
 		return NULL;
 
-#if 0
+#if 0  /* TODO: ethtool options */
 	parse_ethtool_options (main_netplan, connection);
 #endif
 
