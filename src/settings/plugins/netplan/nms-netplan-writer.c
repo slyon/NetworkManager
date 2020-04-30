@@ -2384,7 +2384,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 				                    error);
 	if (error && *error)
 		_LOGT ("netplan: %s", (*error)->message);
-		
+
 	if (!netplan)
 		return FALSE;
 
