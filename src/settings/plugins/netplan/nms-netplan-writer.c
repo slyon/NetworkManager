@@ -2356,6 +2356,11 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 
 	if (!filename) {
 		filename_str = g_string_sized_new (120);
+		/* XXX: Should we mark connections (YAML files) with definitions of
+		 *   physical VS virtual interfaces (e.g. bridge, bond, ...)? To be
+		 *   able to load physical connections prior to virtual connections,
+		 *   which might contain references to those physical ifaces and could
+		 *   thus break libnetplan's YAML parser. */
 		g_string_printf (filename_str, "NM-%s.yaml", nm_connection_get_uuid (connection));
 
 		netplan_yaml_path = g_build_filename (netplan_dir,
