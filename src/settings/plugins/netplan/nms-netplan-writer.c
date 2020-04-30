@@ -835,7 +835,7 @@ HWADDR_BLACKLIST
 	    wolan < NM_SETTING_WIRED_WAKE_ON_LAN_IGNORE)
 		g_output_stream_printf (netplan, 0, NULL, NULL, "      wakeonlan: true\n");
 
-#if 0 // TODO: implement s390 subchannels 
+#if 0 // TODO: implement s390 subchannels
 nm_setting_wired_get_s390_subchannels (s_wired)
 nm_setting_wired_get_s390_nettype (s_wired)
 nm_setting_wired_get_s390_option_by_key (s_wired, "portname")
@@ -1335,7 +1335,7 @@ write_connection_setting (NMSettingConnection *s_con, GOutputStream *netplan)
 	if (tmp)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "        stable-id: %s\n", tmp);
-	
+
 	// TODO: MOVE to header to identify the device / connection it is under
 	tmp = nm_setting_connection_get_interface_name (s_con);
 	if (tmp)
@@ -2372,7 +2372,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 
 	netplan_yaml = g_file_new_for_path (netplan_yaml_path);
 	_LOGT ("write: path %s / %s / %p", netplan_dir, g_file_get_path(netplan_yaml),
-				out_filename);
+	       out_filename);
 
 	if (out_filename && !filename)
 		*out_filename = g_file_get_path(netplan_yaml);

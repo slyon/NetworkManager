@@ -2,7 +2,7 @@
 /* NetworkManager settings service - netplan plugin
  *
  * Lukas Märdian <lukas.maerdian@canoncial.com>
- * 
+ *
  * Copyright (C) 2020 Canonical, Ltd..
  */
 

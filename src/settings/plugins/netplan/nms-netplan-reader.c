@@ -715,7 +715,7 @@ parse_wpa_psk (NetplanWifiAccessPoint *ap,
 {
 	gs_free char *psk = NULL;
 	size_t plen;
-  
+
 	/* Passphrase must be between 10 and 66 characters in length because WPA
 	 * hex keys are exactly 64 characters (no quoting), and WPA passphrases
 	 * are between 8 and 63 characters (inclusive), plus optional quoting if
@@ -1590,7 +1590,7 @@ make_bridge_setting (NetplanNetDefinition *nd,
 			              _nm_utils_ascii_str_to_int64 (nd->bridge_params.ageing_time, 10, 0, G_MAXUINT, -1),
 			              NULL);
 	}
-	
+
 #if 0  /* TODO: add the other bridge params */
 	g_object_set (s_bridge, NM_SETTING_BRIDGE_MULTICAST_SNOOPING, nd->bridge_params.stp, NULL);
 	g_object_set (s_bridge, NM_SETTING_BRIDGE_VLAN_FILTERING, nd->bridge_params.stp, NULL);
@@ -1842,7 +1842,7 @@ netplan_ht_debug (gpointer key,
 {
 	NetplanNetDefinition *nd = (NetplanNetDefinition *) value;
 	char *key_id = (char *) key;
-	
+
 	_LOGT ("netplan expected id %s : hashtable id %s", key_id, nd->id);
 }
 
