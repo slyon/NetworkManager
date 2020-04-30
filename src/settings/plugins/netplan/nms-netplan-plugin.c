@@ -241,6 +241,10 @@ _load_dir (NMSNetplanPlugin *self,
 
 	dupl_filenames = g_hash_table_new_full (nm_str_hash, g_str_equal, NULL, NULL);
 
+	/* XXX: Do we need to load virtual connections (bridge, bond, ...) after
+	 *   physical connections, in order to make libnetplan's YAML parser happy?
+	 *   So all the references to physical interfaces are there, before virtual
+	 *   interfaces try to use them... */
 	while ((f_filename = g_dir_read_name (dir))) {
 		gs_free char *full_path = NULL;
 		NMSNetplanStorage *storage;
