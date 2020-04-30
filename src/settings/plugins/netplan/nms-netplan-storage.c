@@ -205,21 +205,6 @@ nms_netplan_storage_new_connection (NMSNetplanPlugin *plugin,
 	return self;
 }
 
-/* FIXME:
-  CC       src/settings/plugins/netplan/libnm_settings_plugin_netplan_la-nms-netplan-storage.lo
-src/settings/plugins/netplan/nms-netplan-storage.c: In function ‘_storage_clear’:
-src/settings/plugins/netplan/nms-netplan-storage.c:217:19: warning: passing argument 1 of ‘g_file_test’ from incompatible pointer type [-Wincompatible-pointer-types]
-  217 |  if (g_file_test (netplan_yaml, G_FILE_TEST_EXISTS)) {
-      |                   ^~~~~~~~~~~~
-      |                   |
-      |                   GFile * {aka struct _GFile *}
-In file included from /usr/include/glib-2.0/glib.h:48,
-                 from ./shared/nm-default.h:191,
-                 from src/settings/plugins/netplan/nms-netplan-storage.c:9:
-/usr/include/glib-2.0/glib/gfileutils.h:82:45: note: expected ‘const gchar *’ {aka ‘const char *’} but argument is of type ‘GFile *’ {aka ‘struct _GFile *’}
-   82 | gboolean g_file_test         (const gchar  *filename,
-      |                               ~~~~~~~~~~~~~~^~~~~~~~
-*/
 static void
 _storage_clear (NMSNetplanStorage *self)
 {
@@ -229,7 +214,7 @@ _storage_clear (NMSNetplanStorage *self)
 
 	/* Make sure that the related netplan .yaml config file gets removed. */
 	netplan_yaml_path = nms_netplan_storage_get_filename (self);
-	if (g_file_test (netplan_yaml, G_FILE_TEST_EXISTS)) {
+	if (g_file_test (netplan_yaml_path, G_FILE_TEST_EXISTS)) {
 		netplan_yaml = g_file_new_for_path (netplan_yaml_path);
 		g_file_delete (netplan_yaml, NULL, &error);
 		if (error)
