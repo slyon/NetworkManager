@@ -106,7 +106,7 @@ make_connection_name (NetplanNetDefinition *nd,
 
 	/* If the NetworkManager backend already has a NAME, use that */
 	name = nd->backend_settings.nm.name;
-	if (name)
+	if (nm_str_not_empty(name))
 		return name;
 
 	/* Otherwise construct a new NAME */
