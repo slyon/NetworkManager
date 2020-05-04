@@ -140,7 +140,7 @@ make_connection_setting (const char *file,
 	const char *uuid;
 	gs_free char *uuid_free = NULL;
 	const char *v;
-	gs_free char *stable_id = NULL;
+	char *stable_id = NULL;
 	//const char *const *iter;
 	//int vint64, i_val;
 
