@@ -596,6 +596,9 @@ add_connection (NMSettingsPlugin *plugin,
 		       nm_connection_get_id (connection),
 		       local->message);
 		g_propagate_error (error, local);
+		/* FIXME: There must be a cleaner way to do this...
+		 *   Cleanup the (empty) YAML file we created, if we could not write this connection */
+		g_file_delete (g_file_new_for_path(full_filename), NULL, NULL);
 		return FALSE;
 	}
 
