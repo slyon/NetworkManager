@@ -217,9 +217,10 @@ _storage_clear (NMSNetplanStorage *self)
 	if (g_file_test (netplan_yaml_path, G_FILE_TEST_EXISTS)) {
 		netplan_yaml = g_file_new_for_path (netplan_yaml_path);
 		g_file_delete (netplan_yaml, NULL, &error);
-		if (error)
+		if (error) {
 			_LOGW ("netplan: %s", error->message);
 			g_error_free(error);
+		}
 	}
 
 	c_list_unlink (&self->parent._storage_lst);
