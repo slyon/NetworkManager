@@ -97,7 +97,6 @@ test_write_wired_basic (void)
 	NMSettingIPConfig *s_ip6;
 	GError *error = NULL;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -154,7 +153,6 @@ test_write_wired_static (void)
 	NMIPRoute *route6;
 	GError *error = NULL;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -297,7 +295,6 @@ test_write_wired_static_routes (void)
 	GError *error = NULL;
 	gboolean reread_same = FALSE;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -391,7 +388,6 @@ test_write_routing_rules (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	s_con = (NMSettingConnection *) nm_setting_connection_new ();
@@ -482,7 +478,6 @@ test_write_wifi_main (void)
 	GBytes *ssid;
 	guint32 mtu = 1492;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -544,7 +539,6 @@ test_write_wifi_wpa_eap_tls (void)
 	GBytes *ssid;
 	const char *ssid_data = "blahblah";
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -652,7 +646,6 @@ test_write_wifi_wpa_eap_ttls_mschapv2 (void)
 	GBytes *ssid;
 	const char *ssid_data = "blahblah";
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -744,7 +737,6 @@ test_write_wifi_wpa_eap_peap (void)
 	GBytes *ssid;
 	const char *ssid_data = "blahblah";
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -825,7 +817,6 @@ test_write_wifi_band_a (void)
 	GBytes *ssid;
 	const unsigned char ssid_data[] = { 0x54, 0x65, 0x73, 0x74, 0x20, 0x53, 0x53, 0x49, 0x44 };
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -871,7 +862,6 @@ test_write_wifi_band_bg (void)
 	GBytes *ssid;
 	const unsigned char ssid_data[] = { 0x54, 0x65, 0x73, 0x74, 0x20, 0x53, 0x53, 0x49, 0x44 };
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -916,7 +906,6 @@ test_wifi_wowlan_mac_randomization (void)
 	NMSettingIPConfig *s_ip6;
 	GBytes *ssid;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -975,7 +964,6 @@ test_write_bridge_main (void)
 	gs_unref_ptrarray GPtrArray *vlans = NULL;
 	NMBridgeVlan *vlan;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 	g_assert (connection);
 
@@ -1052,7 +1040,6 @@ test_write_bridge_port (void)
 	//gs_unref_ptrarray GPtrArray *vlans = NULL;
 	//NMBridgeVlan *vlan;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 	g_assert (connection);
 
@@ -1135,7 +1122,6 @@ test_write_vlan (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1196,7 +1182,6 @@ test_write_bond_main (void)
 	NMIPAddress *addr;
 	GError *error = NULL;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1265,7 +1250,6 @@ test_write_bond_rr (void)
 	NMIPAddress *addr;
 	GError *error = NULL;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1317,7 +1301,6 @@ test_write_bond_lacp (void)
 	NMIPAddress *addr;
 	GError *error = NULL;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1364,7 +1347,6 @@ test_write_modem_gsm_auto_eui64 (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIP6Config *s_ip6;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1427,7 +1409,6 @@ test_write_modem_gsm (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1492,7 +1473,6 @@ test_write_modem_cdma (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1538,7 +1518,6 @@ test_example_field_wifi (void)
 	NMSettingIPConfig *s_ip6;
 	GBytes *ssid;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */
@@ -1617,7 +1596,6 @@ test_example_field_lte (void)
 	NMSettingIPConfig *s_ip4;
 	NMSettingIPConfig *s_ip6;
 
-	_clear_all_netdefs ();
 	connection = nm_simple_connection_new ();
 
 	/* Connection setting */

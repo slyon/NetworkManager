@@ -21,8 +21,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <netplan/parse.h>
-
 #include "nm-utils.h"
 #include "nm-setting-connection.h"
 #include "nm-setting-wired.h"
@@ -86,18 +84,6 @@ _log_keyfile (NMConnection *con)
 	printf("===== Keyfile =====\n%s\n===== Keyfile End =====\n", str);
 }
 
-static void
-_clear_all_netdefs (void)
-{
-	// Clear all netdefs before each test, so we only access the connection under test.
-	if(netdefs) {
-		guint n = g_hash_table_size (netdefs);
-		// TODO: make sure that any dynamically allocated netdef data is freed
-		g_hash_table_remove_all (netdefs);
-		_LOGT ("cleared %u prior netdefs", n);
-	}
-}
-
 static NMConnection *
 _connection_from_file (const char *filename,
                        const char *network_file,
@@ -110,8 +96,6 @@ _connection_from_file (const char *filename,
 
 	g_assert (!out_unhandled || !*out_unhandled);
 
-	/* Clear netdefs before reading new data from file */
-	_clear_all_netdefs ();
 	connection = nmtst_connection_from_file (filename, network_file, netdef_id,
 	                                         out_unhandled ?: &unhandled_fallback, &error);
 	g_assert_no_error (error);
@@ -252,8 +236,6 @@ _writer_new_connection_no_reread (NMConnection *connection,
 
 	/* Duplicate connection and clear current netdefs, to continue testing with a clean state. */
 	con_verified = nmtst_connection_duplicate_and_normalize (connection);
-	_clear_all_netdefs();
-
 	success = nms_netplan_writer_write_connection (con_verified,
 	                                               netplan_dir,
 	                                               NULL,
@@ -295,8 +277,6 @@ _writer_new_connection_reread (NMConnection *connection,
 
 	/* Duplicate connection and clear current netdefs, to continue testing with a clean state. */
 	con_verified = nmtst_connection_duplicate_and_normalize (connection);
-	_clear_all_netdefs();
-
 	success = nms_netplan_writer_write_connection (con_verified,
 	                                               netplan_dir,
 	                                               NULL,
