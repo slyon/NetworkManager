@@ -2355,6 +2355,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 
 
 	if (!filename) {
+		/* Create new YAML config file */
 		filename_str = g_string_sized_new (120);
 		/* XXX: Should we mark connections (YAML files) with definitions of
 		 *   physical VS virtual interfaces (e.g. bridge, bond, ...)? To be
@@ -2366,7 +2367,12 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 		netplan_yaml_path = g_build_filename (netplan_dir,
 		                                      filename_str->str,
 		                                      NULL);
+
+		/* Only return the filename if this is a newly written netplan */
+		if (out_filename)
+			*out_filename = g_strdup(netplan_yaml_path);
 	} else {
+		/* Update given YAML config file */
 		netplan_yaml_path = g_strdup(filename);
 	}
 
@@ -2374,14 +2380,10 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	_LOGT ("write: path %s / %s / %p", netplan_dir, g_file_get_path(netplan_yaml),
 	       out_filename);
 
-	if (out_filename && !filename)
-		*out_filename = g_file_get_path(netplan_yaml);
-
 	netplan = (GOutputStream *) g_file_replace (netplan_yaml,
 	                                            NULL, FALSE,
 	                                            G_FILE_CREATE_REPLACE_DESTINATION,
-				                    NULL,
-				                    error);
+	                                            NULL, error);
 	if (error && *error)
 		_LOGT ("netplan: %s", (*error)->message);
 
@@ -2396,7 +2398,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	_LOGT ("write: write connection %s (%s) to file \"%s\"",
 	       nm_connection_get_id (connection),
 	       nm_connection_get_uuid (connection),
-	       *out_filename);
+	       netplan_yaml_path);
 
 	if (!do_write_to_disk (connection,
 	                       netplan,
@@ -2422,7 +2424,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 		gs_free_error GError *local = NULL;
 		gs_free char *unhandled = NULL;
 
-		reread = connection_from_file (*out_filename,
+		reread = connection_from_file (netplan_yaml_path,
 		                               &unhandled,
 		                               &local,
 		                               NULL);
@@ -2430,11 +2432,11 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 
 		if (!reread) {
 			_LOGW ("write: failure to re-read connection \"%s\": %s",
-			       *out_filename, local->message);
+			       netplan_yaml_path, local->message);
 		} else if (unhandled) {
 			g_clear_object (&reread);
 			_LOGW ("write: failure to re-read connection \"%s\": %s",
-			       *out_filename, "connection is unhandled");
+			       netplan_yaml_path, "connection is unhandled");
 		} else {
 			if (out_reread_same) {
 				reread_same = nm_connection_compare (reread, connection, NM_SETTING_COMPARE_FLAG_EXACT);
@@ -2442,7 +2444,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 					_LOGD ("write: connection %s (%s) was modified by persisting it to \"%s\" ",
 					       nm_connection_get_id (connection),
 					       nm_connection_get_uuid (connection),
-					       *out_filename);
+					       netplan_yaml_path);
 				}
 			}
 		}
@@ -2450,12 +2452,6 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 		NM_SET_OUT (out_reread, g_steal_pointer (&reread));
 		NM_SET_OUT (out_reread_same, reread_same);
 	}
-
-#if 0
-	/* Only return the filename if this was a newly written netplan */
-	if (out_filename && !filename)
-		*out_filename = g_strdup (filename);
-#endif
 
 	return TRUE;
 }
