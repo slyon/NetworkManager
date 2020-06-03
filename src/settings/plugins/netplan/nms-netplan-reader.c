@@ -1488,7 +1488,11 @@ make_bond_setting (NetplanNetDefinition *nd,
 		GString *ip_targets = g_string_sized_new (200);
 		gint i;
 
-		for (i = 0; (ip_target = (char *)g_array_index(nd->bond_params.arp_ip_targets, gpointer, i)) != NULL; i++) {
+		/* Make sure the arp_ip_targets GArray is NULL terminated, to avoid out-of-bound memory access */
+		gchar *end_of_array = NULL;
+		g_array_append_val(nd->bond_params.arp_ip_targets, end_of_array);
+
+		for (i = 0; (ip_target = g_array_index(nd->bond_params.arp_ip_targets, char*, i)) != NULL; i++) {
 			if (i > 0)
 				g_string_append_printf (ip_targets, ",");
 			g_string_append_printf (ip_targets, "%s", ip_target);
@@ -1930,8 +1934,7 @@ IPV6TUNNELIPV4
 		_LOGE ("invalid netdef");
 		return NULL;
 	}
-	_LOGT ("Selected netdef %s : %d", netdef_id ? netdef_id : (char *) key, netdef->type);
-
+	_LOGT ("Selected netdef %s : %d", netdef->id, netdef->type);
 
 	switch (netdef->type) {
 	case NETPLAN_DEF_TYPE_ETHERNET:
@@ -1969,7 +1972,6 @@ IPV6TUNNELIPV4
 		}
 		return g_steal_pointer (&connection);
 	}
-
 
 	if (!connection)
 		return NULL;
