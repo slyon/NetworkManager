@@ -1230,7 +1230,7 @@ test_write_bond_main (void)
 	 * netplan parser happy. Explicitly choose the "bond0" netdef. */
 	reread = _connection_from_file (testfile,
 	                                TEST_NETPLAN_DIR"/add-base-iface.yaml",
-									"bond0",
+	                                "bond0",
 	                                NULL);
 
 	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
