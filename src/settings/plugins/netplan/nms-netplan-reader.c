@@ -1883,6 +1883,8 @@ connection_from_file_full (const char *filename,
 		return NULL;
 	}
 
+	/* Clear libnetplan's netdefs data before parsing new YAML file(s) */
+	nms_netplan_utils_clear_netdefs();
 	if (network_file)
 		ret = netplan_parse_yaml (network_file, error);
 	ret = netplan_parse_yaml (filename, error);

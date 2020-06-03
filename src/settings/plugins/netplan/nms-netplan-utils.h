@@ -11,6 +11,7 @@
 
 #include "nm-connection.h"
 #include "nm-libnm-core-intern/nm-ethtool-utils.h"
+#include <netplan/parse.h>
 
 typedef enum {
 	NMS_NETPLAN_STORAGE_TYPE_RUN       = 1, /* read-write, runtime only, e.g. /run */
@@ -71,6 +72,21 @@ nms_netplan_utils_get_ethtool_name (NMEthtoolID ethtool_id)
 	nm_assert (_nm_ethtool_netplan_names[ethtool_id - _NM_ETHTOOL_ID_FEATURE_FIRST]);
 
 	return _nm_ethtool_netplan_names[ethtool_id - _NM_ETHTOOL_ID_FEATURE_FIRST];
+}
+
+static void
+nms_netplan_utils_clear_netdefs()
+{
+	/* Clear netplan's 'netdefs' data structure, to avoid memory corruption, when YAML files are
+	 * parsed multiple times, overwriting previously allocated memory.
+	 * FIXME: This is ugly! It should be a libnetplan API, instead of accessing internal data directly. */
+
+	/* 'netdefs' is a libnetplan global GHashTable* variable, mapping ID → NetplanNetDefinition* */
+	if(netdefs) {
+		guint n = g_hash_table_size (netdefs);
+		// TODO: make sure that any dynamically allocated netdef data is freed
+		g_hash_table_remove_all (netdefs);
+	}
 }
 
 const NMEthtoolData *nms_netplan_utils_get_ethtool_by_name (const char *name);
