@@ -1488,11 +1488,8 @@ make_bond_setting (NetplanNetDefinition *nd,
 		GString *ip_targets = g_string_sized_new (200);
 		gint i;
 
-		/* Make sure the arp_ip_targets GArray is NULL terminated, to avoid out-of-bound memory access */
-		gchar *end_of_array = NULL;
-		g_array_append_val(nd->bond_params.arp_ip_targets, end_of_array);
-
-		for (i = 0; (ip_target = g_array_index(nd->bond_params.arp_ip_targets, char*, i)) != NULL; i++) {
+		for (i = 0; i < nd->bond_params.arp_ip_targets->len; ++i) {
+			ip_target = g_array_index(nd->bond_params.arp_ip_targets, char*, i);
 			if (i > 0)
 				g_string_append_printf (ip_targets, ",");
 			g_string_append_printf (ip_targets, "%s", ip_target);
