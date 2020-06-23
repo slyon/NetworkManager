@@ -174,7 +174,7 @@ AC_ARG_ENABLE(netplan, AS_HELP_STRING([--enable-netplan], [enable netplan config
 AC_ARG_ENABLE(ifupdown, AS_HELP_STRING([--enable-ifupdown], [enable ifupdown configuration plugin (Debian/Ubuntu)]))
 # Default alternative plugins by distribution
 AS_IF([test -z "$enable_ifcfg_rh" -a -d /etc/sysconfig/network-scripts], enable_ifcfg_rh=yes)
-AS_IF([test -z "$enable_netplan" -a -d /etc/netplan], enable_netplan=yes)
+AS_IF([test -z "$enable_netplan" -a -d /etc/netplan],                    enable_netplan=yes)
 AS_IF([test -z "$enable_ifupdown" -a -f /etc/debian_version],            enable_ifupdown=yes)
 # Otherwise plugins default to "no"
 AS_IF([test -z "$enable_ifcfg_rh"], enable_ifcfg_rh=no)
@@ -198,7 +198,7 @@ if test -z "$config_plugins_default" -o "$config_plugins_default" = no; then
 fi
 
 test "$enable_ifcfg_rh" = "yes"           && distro_plugins="$distro_plugins,ifcfg-rh"
-test "$enable_netplan" = "yes"           && distro_plugins="$distro_plugins,netplan"
+test "$enable_netplan" = "yes"            && distro_plugins="$distro_plugins,netplan"
 test "$enable_ifupdown" = "yes"           && distro_plugins="$distro_plugins,ifupdown"
 distro_plugins="${distro_plugins#,}"
 
