@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: LGPL-2.1+
 /* NetworkManager system settings service
  *
  * Mathieu Trudel-Lapierre <mathieu.trudel-lapierre@canonical.com>

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: LGPL-2.1+
 /* NetworkManager settings service - netplan plugin
  *
  * Lukas Märdian <lukas.maerdian@canoncial.com>
