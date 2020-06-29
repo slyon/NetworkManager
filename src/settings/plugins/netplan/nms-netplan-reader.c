@@ -360,7 +360,7 @@ make_routes (NetplanNetDefinition *nd, NMSettingIPConfig *s_ip, guint family)
 		NetplanIPRoute *r = g_array_index(nd->routes, NetplanIPRoute*, i);
 		if (r->family != family)
 			continue;
-		gchar** ipmask = g_strsplit (r->to, "/", 2);
+		char** ipmask = g_strsplit (r->to, "/", 2);
 		route = nm_ip_route_new (r->family, ipmask[0], atoi(ipmask[1]), r->via, r->metric, &local);
 		// TODO: implement route attributes
 		//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (3455));
@@ -434,7 +434,7 @@ NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID
 	 */
 	if (nd->ip4_addresses) {
 		for (unsigned i = 0; i < nd->ip4_addresses->len; ++i) {
-			gchar** ipmask = g_strsplit (g_array_index(nd->ip4_addresses, char*, i), "/", 2);
+			char** ipmask = g_strsplit (g_array_index(nd->ip4_addresses, char*, i), "/", 2);
 			addr = nm_ip_address_new (AF_INET, ipmask[0], atoi(ipmask[1]), &local);
 			g_assert_no_error (local);
 			nm_setting_ip_config_add_address (s_ip4, addr);
@@ -592,7 +592,7 @@ DHCPV6_SEND_HOSTNAME
 	/* Read static IP addresses. */
 	if (nd->ip6_addresses) {
 		for (unsigned i = 0; i < nd->ip6_addresses->len; ++i) {
-			gchar** ipmask = g_strsplit (g_array_index(nd->ip6_addresses, char*, i), "/", 2);
+			char** ipmask = g_strsplit (g_array_index(nd->ip6_addresses, char*, i), "/", 2);
 			addr6 = nm_ip_address_new (AF_INET6, ipmask[0], atoi(ipmask[1]), &local);
 			g_assert_no_error (local);
 			nm_setting_ip_config_add_address (s_ip6, addr6);
@@ -1298,12 +1298,12 @@ read_routing_rules (NetplanNetDefinition *nd,
 
 		rule = nm_ip_routing_rule_new (r->family);
 		if (r->from) {
-			gchar** ipmask = g_strsplit (r->from, "/", 2);
+			char** ipmask = g_strsplit (r->from, "/", 2);
 			guint8 len = atoi(ipmask[1]);
 			nm_ip_routing_rule_set_to (rule, len ? ipmask[0] : NULL, len);
 		}
 		if (r->to) {
-			gchar** ipmask = g_strsplit (r->to, "/", 2);
+			char** ipmask = g_strsplit (r->to, "/", 2);
 			guint8 len = atoi(ipmask[1]);
 			nm_ip_routing_rule_set_to (rule, len ? ipmask[0] : NULL, len);
 		}
@@ -1486,7 +1486,7 @@ make_bond_setting (NetplanNetDefinition *nd,
 	if (nd->bond_params.arp_ip_targets) {
 		char *ip_target;
 		GString *ip_targets = g_string_sized_new (200);
-		gint i;
+		int i;
 
 		for (i = 0; i < nd->bond_params.arp_ip_targets->len; ++i) {
 			ip_target = g_array_index(nd->bond_params.arp_ip_targets, char*, i);

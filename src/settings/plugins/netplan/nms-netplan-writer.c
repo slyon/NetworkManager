@@ -76,7 +76,7 @@ write_array_to_sequence (GArray* arr, GOutputStream* s, char* start)
 
 static struct HashToDict {
 	GOutputStream* stream;
-	gchar* indent;
+	char* indent;
 } HashToDict;
 
 static void
@@ -84,7 +84,7 @@ write_hashtable_to_dict (gpointer key, gpointer value, gpointer user_data)
 {
 	struct HashToDict* d = user_data;
 	g_output_stream_printf(d->stream, 0, NULL, NULL, "%s%s: %s\n",
-	                       d->indent, (gchar*)key, (gchar*)value);
+	                       d->indent, (char*)key, (char*)value);
 }
 
 #if 0  /* GCC Magic */
@@ -482,7 +482,7 @@ FILS
 	return TRUE;
 }
 
-static gchar*
+static char*
 wowlan_flags_str (NMSettingWirelessWakeOnWLan flags, GError **error)
 {
 	GString *out = g_string_sized_new (200);
@@ -498,7 +498,7 @@ wowlan_flags_str (NMSettingWirelessWakeOnWLan flags, GError **error)
 
 	// cut last ", "
 	out = g_string_truncate (out, out->len-2);
-	// returned gchar* must be freed by caller
+	// returned string must be freed by caller
 	return g_string_free (out, FALSE);
 }
 
@@ -554,7 +554,7 @@ HWADDR_BLACKLIST
 
 	wowlan = nm_setting_wireless_get_wake_on_wlan (s_wireless);
 	if (wowlan != NM_SETTING_WIRELESS_WAKE_ON_WLAN_DEFAULT) {
-		gchar *tmp = wowlan_flags_str(wowlan, error);
+		char *tmp = wowlan_flags_str(wowlan, error);
 		if (!tmp)
 			return FALSE;
 		g_output_stream_printf (netplan, 0, NULL, NULL,
@@ -2087,7 +2087,7 @@ do_write_construct (NMConnection *connection,
 	NMSettingConnection *s_con;
 	//NMSettingIPConfig *s_ip4;
 	//NMSettingIPConfig *s_ip6;
-	const gchar *type = NULL, *id = NULL;
+	const char *type = NULL, *id = NULL;
 	GString *id_str = NULL;
 	GArray *addresses, *nameservers, *searches, *routes;
 	GHashTable *dhcp4_overrides, *dhcp6_overrides;
@@ -2275,12 +2275,12 @@ do_write_construct (NMConnection *connection,
 		for (unsigned i = 0; i < routes->len; ++i) {
 			tbl = g_array_index(routes, GHashTable*, i);
 			size_t len = 3;
-			gchar* keys[3] = { "to", "via", "metric" };
-			gchar* indent = NULL;
-			gchar* v = NULL;
+			char* keys[3] = { "to", "via", "metric" };
+			char* indent = NULL;
+			char* v = NULL;
 			for (unsigned j = 0; j < len; ++j) {
 				indent = (!j) ? "      - " : "        ";
-				v = (gchar*) g_hash_table_lookup(tbl, keys[j]);
+				v = (char*) g_hash_table_lookup(tbl, keys[j]);
 				if (v)
 					g_output_stream_printf (netplan, 0, NULL, NULL,
 					                        "%s%s: %s\n", indent, keys[j], v);
