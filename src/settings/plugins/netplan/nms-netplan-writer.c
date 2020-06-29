@@ -430,7 +430,7 @@ WPA_METHOD
 				// TODO: use set_secret??
 				if (key_valid) {
 					g_output_stream_printf(netplan, 0, NULL, NULL,
-							       "          password: %s\n", key);
+					                       "          password: %s\n", key);
 				}
 			}
 		}
@@ -532,12 +532,12 @@ write_wireless_setting (NMConnection *connection,
 	device_mac = nm_setting_wireless_get_mac_address (s_wireless);
 	if (device_mac)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      match: { macaddress: %s }\n", device_mac);
+		                        "      match: { macaddress: %s }\n", device_mac);
 
 	cloned_mac = nm_setting_wireless_get_cloned_mac_address (s_wireless);
 	if (cloned_mac)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      macaddress: %s\n", cloned_mac);
+		                        "      macaddress: %s\n", cloned_mac);
 
 #if 0	// TODO: fix MAC setting, blacklist for wireless.
 nm_setting_wireless_get_generate_mac_address_mask (s_wireless)
@@ -550,7 +550,7 @@ HWADDR_BLACKLIST
 	mtu = nm_setting_wireless_get_mtu (s_wireless);
 	if (mtu != 0)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      mtu: %d\n", mtu);
+		                        "      mtu: %d\n", mtu);
 
 	wowlan = nm_setting_wireless_get_wake_on_wlan (s_wireless);
 	if (wowlan != NM_SETTING_WIRELESS_WAKE_ON_WLAN_DEFAULT) {
@@ -808,12 +808,12 @@ write_wired_setting (NMConnection *connection, GOutputStream *netplan, GError **
 	mac = nm_setting_wired_get_mac_address (s_wired);
 	if (mac)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      match: { macaddress: %s }\n", mac);
+		                        "      match: { macaddress: %s }\n", mac);
 
 	mac = nm_setting_wired_get_cloned_mac_address (s_wired);
 	if (mac)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      macaddress: %s\n", mac);
+		                        "      macaddress: %s\n", mac);
 
 	// TODO: dedup fields for mac-address to do MAC setting cleanly.
 	// nm_setting_wired_get_generate_mac_address_mask (s_wired)
@@ -827,7 +827,7 @@ HWADDR_BLACKLIST
 	mtu = nm_setting_wired_get_mtu (s_wired);
 	if (mtu != 0)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      mtu: %d\n", mtu);
+		                        "      mtu: %d\n", mtu);
 
 	/* TODO: Implement all the different WoLAN flags in netplan. */
 	wolan = nm_setting_wired_get_wake_on_lan (s_wired);
@@ -887,11 +887,11 @@ write_wired_for_virtual (NMConnection *connection, GOutputStream *netplan)
 		device_mac = nm_setting_wired_get_mac_address (s_wired);
 		if (device_mac)
 			g_output_stream_printf (netplan, 0, NULL, NULL,
-					        "      match: { mac-address: %s }\n", device_mac);
+			                        "      match: { mac-address: %s }\n", device_mac);
 
 		cloned_mac = nm_setting_wired_get_cloned_mac_address (s_wired);
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      mac-address: %s\n", cloned_mac);
+		                        "      mac-address: %s\n", cloned_mac);
 
 		// TODO: support generate_mac_address_mask
 		//svSetValueStr (netplan, "GENERATE_MAC_ADDRESS_MASK",
@@ -900,7 +900,7 @@ write_wired_for_virtual (NMConnection *connection, GOutputStream *netplan)
 		mtu = nm_setting_wired_get_mtu (s_wired);
 		if (mtu != 0)
 			g_output_stream_printf (netplan, 0, NULL, NULL,
-					        "      mtu: %d\n", mtu);
+			                        "      mtu: %d\n", mtu);
 	}
 	return has_wired;
 }
@@ -923,9 +923,9 @@ write_vlan_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 	}
 
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      id: %d\n", nm_setting_vlan_get_id (s_vlan));
+	                        "      id: %d\n", nm_setting_vlan_get_id (s_vlan));
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      link: %s\n", nm_setting_vlan_get_parent (s_vlan));
+	                        "      link: %s\n", nm_setting_vlan_get_parent (s_vlan));
 
 #if 0  /* TODO: add support for vlan flags / advanced settings */
 nm_setting_vlan_get_flags (s_vlan)
@@ -1028,7 +1028,7 @@ write_bond_setting (NMConnection *connection, GOutputStream *netplan, GError **e
 		}
 
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      parameters:\n%s", str->str);
+		                        "      parameters:\n%s", str->str);
 	}
 
 	return TRUE;
@@ -1172,7 +1172,7 @@ write_bridge_setting (NMConnection *connection, GOutputStream *netplan, GError *
 
 	if (opts->len)
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "      parameters:\n%s", opts->str);
+		                        "      parameters:\n%s", opts->str);
 	g_string_free (opts, TRUE);
 
 #if 0 // TODO: Bridge VLANS magic???
@@ -1838,7 +1838,7 @@ write_ip4_aliases (NMConnection *connection, GArray *addresses, const char *base
 
 static void
 write_ip6_setting_dhcp_hostname (NMSettingIPConfig *s_ip6,
-				 GHashTable *dhcp_overrides)
+                                 GHashTable *dhcp_overrides)
 {
 	const char *hostname;
 
@@ -2115,7 +2115,7 @@ do_write_construct (NMConnection *connection,
 	}
 
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "network:\n  version: 2\n  renderer: NetworkManager\n");
+	                        "network:\n  version: 2\n  renderer: NetworkManager\n");
 
 	id = nm_connection_get_interface_name (connection);
 	/* Fallback to "NM-<UUID>" based naming, if ifname is not set. */
@@ -2405,7 +2405,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	                       blobs,
 	                       secrets,
 	                       route_ignore,
-			       NULL, NULL, NULL,
+	                       NULL, NULL, NULL,
 	                       error))
 		return FALSE;
 

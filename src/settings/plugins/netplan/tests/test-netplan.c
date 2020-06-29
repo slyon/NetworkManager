@@ -926,7 +926,7 @@ test_wifi_wowlan_mac_randomization (void)
 	              //NM_SETTING_WIRELESS_MAC_ADDRESS_RANDOMIZATION, NM_SETTING_MAC_RANDOMIZATION_ALWAYS,
 	              NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_INFRA,
 	              NM_SETTING_WIRELESS_SSID, ssid,
-				  NM_SETTING_WIRELESS_WAKE_ON_WLAN, NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL,
+	              NM_SETTING_WIRELESS_WAKE_ON_WLAN, NM_SETTING_WIRELESS_WAKE_ON_WLAN_ALL,
 	              NULL);
 
 	/* Add generic IP4/6 DHCP settings. */
@@ -1133,7 +1133,7 @@ test_write_vlan (void)
 	              /* TODO: Needs to be implemented in netplan. */
 	              //NM_SETTING_CONNECTION_AUTOCONNECT, FALSE,
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_VLAN_SETTING_NAME,
-				  NM_SETTING_CONNECTION_INTERFACE_NAME, "enred",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "enred",
 	              NULL);
 
 	/* Wired setting */
@@ -1356,7 +1356,7 @@ test_write_modem_gsm_auto_eui64 (void)
 	              NM_SETTING_CONNECTION_ID, "gsm-auto",
 	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_GSM_SETTING_NAME,
-				  NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
 	              NULL);
 
 	/* Modem setting */
@@ -1418,7 +1418,7 @@ test_write_modem_gsm (void)
 	              NM_SETTING_CONNECTION_ID, "gsm",
 	              NM_SETTING_CONNECTION_UUID, nm_utils_uuid_generate_a (),
 	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_GSM_SETTING_NAME,
-				  NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "cdc-wdm0",
 	              NULL);
 
 	/* Modem setting */
@@ -1615,7 +1615,7 @@ test_example_field_lte (void)
 	nm_connection_add_setting (connection, NM_SETTING (s_gsm));
 	g_object_set (s_gsm,
 	              NM_SETTING_GSM_APN, "bicsapn",
-				  NM_SETTING_GSM_NUMBER, "*99#",
+	              NM_SETTING_GSM_NUMBER, "*99#",
 	              NULL);
 
 	/* IP4 setting */

@@ -175,8 +175,8 @@ nms_netplan_storage_new_unhandled (NMSNetplanPlugin *plugin,
 	self = _storage_new (plugin,
 	                     NULL,
 	                     filename,
-			     FALSE,
-			     NMS_NETPLAN_STORAGE_TYPE_ETC);
+	                     FALSE,
+	                     NMS_NETPLAN_STORAGE_TYPE_ETC);
 	self->unmanaged_spec = g_strdup (unmanaged_spec);
 	self->unrecognized_spec = g_strdup (unrecognized_spec);
 	return self;

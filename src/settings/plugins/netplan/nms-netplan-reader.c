@@ -450,12 +450,12 @@ NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID
 	if (nd->ip4_nameservers)
 		for (unsigned i = 0; i < nd->ip4_nameservers->len; ++i)
 			nm_setting_ip_config_add_dns (s_ip4,
-										  g_array_index(nd->ip4_nameservers, char*, i));
+			                              g_array_index(nd->ip4_nameservers, char*, i));
 
 	if (nd->search_domains)
 		for (unsigned i = 0; i < nd->search_domains->len; ++i)
 			nm_setting_ip_config_add_dns_search (s_ip4,
-												 g_array_index(nd->search_domains, char*, i));
+			                                     g_array_index(nd->search_domains, char*, i));
 
 #if 0  /* TODO: Implement read for connection sharing. */
 NM_SETTING_IP4_CONFIG_METHOD_SHARED
@@ -603,7 +603,7 @@ DHCPV6_SEND_HOSTNAME
 	if (nd->ip6_nameservers)
 		for (unsigned i = 0; i < nd->ip6_nameservers->len; ++i)
 			nm_setting_ip_config_add_dns (s_ip6,
-										  g_array_index(nd->ip6_nameservers, char*, i));
+			                              g_array_index(nd->ip6_nameservers, char*, i));
 
 #if 0  /* TODO: IPv6: read static addresses. */
 parse_full_ip6_address (netplan, *iter, i, &addr, error)
@@ -625,7 +625,7 @@ IPV6_TOKEN
 	/* IPv6 Address generation mode */
 	if (nd->ip6_addr_gen_mode == NETPLAN_ADDRGEN_STABLEPRIVACY)
 		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE,
-					  NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY, NULL);
+		              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_STABLE_PRIVACY, NULL);
 	else if (nd->ip6_addr_gen_mode == NETPLAN_ADDRGEN_EUI64)
 		g_object_set (s_ip6, NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE,
 		              NM_SETTING_IP6_CONFIG_ADDR_GEN_MODE_EUI64, NULL);
@@ -957,7 +957,7 @@ make_wireless_security_setting (NetplanNetDefinition *nd,
 		return NULL;
 
 #if 0  /* TODO: WEP is not supported with netplan. */
-	 *   Only 'none', 'psk', 'eap' and '802.1x' as handled by make_wpa_setting().
+	// Only 'none', 'psk', 'eap' and '802.1x' as handled by make_wpa_setting().
 	wsec = make_wep_setting (nd, file, error);
 	if (wsec)
 		return wsec;
@@ -1269,7 +1269,7 @@ modem_connection_from_netplan (const char *file,
 	/* Connection */
 	con_setting = make_connection_setting (file, nd, is_gsm ?
 	                                       NM_SETTING_GSM_SETTING_NAME :
-										   NM_SETTING_CDMA_SETTING_NAME,
+	                                       NM_SETTING_CDMA_SETTING_NAME,
 	                                       NULL, NULL);
 
 	if (!con_setting) {
