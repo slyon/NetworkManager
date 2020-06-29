@@ -151,7 +151,7 @@ make_connection_setting (const char *file,
 	s_con = NM_SETTING_CONNECTION (nm_setting_connection_new ());
 
 	new_id = make_connection_name (nd, netplan_name, suggested, prefix);
-	g_assert_nonnull (nm_str_not_empty(new_id));
+	nm_assert (nm_str_not_empty(new_id) != NULL);
 	g_object_set (s_con, NM_SETTING_CONNECTION_ID, new_id, NULL);
 
 	/* Try for a UUID key before falling back to hashing the file name */
@@ -365,7 +365,7 @@ make_routes (NetplanNetDefinition *nd, NMSettingIPConfig *s_ip, guint family)
 		// TODO: implement route attributes
 		//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_WINDOW, g_variant_new_uint32 (3455));
 		//nm_ip_route_set_attribute (route, NM_IP_ROUTE_ATTRIBUTE_ONLINK, g_variant_new_boolean(r.onlink));
-		g_assert_no_error (local);
+		nm_assert (local == NULL);
 		nm_setting_ip_config_add_route (s_ip, route);
 		nm_ip_route_unref (route);
 	}
@@ -436,7 +436,7 @@ NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID
 		for (unsigned i = 0; i < nd->ip4_addresses->len; ++i) {
 			char** ipmask = g_strsplit (g_array_index(nd->ip4_addresses, char*, i), "/", 2);
 			addr = nm_ip_address_new (AF_INET, ipmask[0], atoi(ipmask[1]), &local);
-			g_assert_no_error (local);
+			nm_assert (local == NULL);
 			nm_setting_ip_config_add_address (s_ip4, addr);
 			nm_ip_address_unref (addr);
 		}
@@ -594,7 +594,7 @@ DHCPV6_SEND_HOSTNAME
 		for (unsigned i = 0; i < nd->ip6_addresses->len; ++i) {
 			char** ipmask = g_strsplit (g_array_index(nd->ip6_addresses, char*, i), "/", 2);
 			addr6 = nm_ip_address_new (AF_INET6, ipmask[0], atoi(ipmask[1]), &local);
-			g_assert_no_error (local);
+			nm_assert (local == NULL);
 			nm_setting_ip_config_add_address (s_ip6, addr6);
 			nm_ip_address_unref (addr6);
 		}
