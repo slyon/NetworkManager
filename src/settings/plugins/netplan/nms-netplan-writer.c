@@ -62,7 +62,7 @@
 /*****************************************************************************/
 
 static void
-write_array_to_sequence(GArray* arr, GOutputStream* s, char* start)
+write_array_to_sequence (GArray* arr, GOutputStream* s, char* start)
 {
 	g_output_stream_printf(s, 0, NULL, NULL, "%s [", start);
 	for (unsigned i = 0; i < arr->len; ++i) {
@@ -80,7 +80,7 @@ static struct HashToDict {
 } HashToDict;
 
 static void
-write_hashtable_to_dict(gpointer key, gpointer value, gpointer user_data)
+write_hashtable_to_dict (gpointer key, gpointer value, gpointer user_data)
 {
 	struct HashToDict* d = user_data;
 	g_output_stream_printf(d->stream, 0, NULL, NULL, "%s%s: %s\n",
@@ -483,7 +483,7 @@ FILS
 }
 
 static gchar*
-wowlan_flags_str(NMSettingWirelessWakeOnWLan flags, GError **error)
+wowlan_flags_str (NMSettingWirelessWakeOnWLan flags, GError **error)
 {
 	GString *out = g_string_sized_new (200);
 	for (unsigned i = 0; NETPLAN_WIFI_WOWLAN_TYPES[i].name != NULL; ++i) {

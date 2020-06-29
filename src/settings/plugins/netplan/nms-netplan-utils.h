@@ -75,7 +75,7 @@ nms_netplan_utils_get_ethtool_name (NMEthtoolID ethtool_id)
 }
 
 static void
-nms_netplan_utils_clear_netdefs()
+nms_netplan_utils_clear_netdefs ()
 {
 	/* Clear netplan's 'netdefs' data structure, to avoid memory corruption, when YAML files are
 	 * parsed multiple times, overwriting previously allocated memory.
