@@ -613,23 +613,23 @@ HWADDR_BLACKLIST
 		g_string_append_printf (essid, "%c", '\0');
 	}
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "      access-points:\n");
+	                        "      access-points:\n");
 	g_output_stream_printf (netplan, 0, NULL, NULL,
-			        "        %s:\n", essid->str);
+	                        "        %s:\n", essid->str);
 	g_string_free(essid, TRUE);
 
 	/* Write WiFi mode */
 	mode = nm_setting_wireless_get_mode (s_wireless);
 	if (nm_streq (mode, NM_SETTING_WIRELESS_MODE_INFRA))
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "          mode: %s\n", "infrastructure");
+		                        "          mode: %s\n", "infrastructure");
 	else if (nm_streq (mode, NM_SETTING_WIRELESS_MODE_ADHOC)) {
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "          mode: %s\n", "adhoc");
+		                        "          mode: %s\n", "adhoc");
 		adhoc = TRUE;
 	} else if (nm_streq (mode, NM_SETTING_WIRELESS_MODE_AP))
 		g_output_stream_printf (netplan, 0, NULL, NULL,
-				        "          mode: %s\n", "ap");
+		                        "          mode: %s\n", "ap");
 	else if (mode != NULL) {
 		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
 		             "Invalid mode '%s' in '%s' setting",
