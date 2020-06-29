@@ -9,7 +9,7 @@
 #ifndef __NMS_NETPLAN_PLUGIN_H__
 #define __NMS_NETPLAN_PLUGIN_H__
 
-#define NETPLAN_DIR				SYSCONFDIR "/netplan"
+#define NETPLAN_DIR                        SYSCONFDIR "/netplan"
 #define NMS_TYPE_NETPLAN_PLUGIN            (nms_netplan_plugin_get_type ())
 #define NMS_NETPLAN_PLUGIN(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), NMS_TYPE_NETPLAN_PLUGIN, NMSNetplanPlugin))
 #define NMS_NETPLAN_PLUGIN_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), NMS_TYPE_NETPLAN_PLUGIN, NMSPluginClass))

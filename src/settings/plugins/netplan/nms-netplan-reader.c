@@ -414,7 +414,7 @@ IPV4_ROUTE_TABLE
 	              NULL);
 
 	//if (nm_streq (method, NM_SETTING_IP4_CONFIG_METHOD_DISABLED))
-	//	return NM_SETTING (g_steal_pointer (&s_ip4));
+	//    return NM_SETTING (g_steal_pointer (&s_ip4));
 
 	/* Handle DHCP settings */
 	if (nd->dhcp4 && nd->dhcp4_overrides.hostname)

@@ -539,7 +539,7 @@ write_wireless_setting (NMConnection *connection,
 		g_output_stream_printf (netplan, 0, NULL, NULL,
 		                        "      macaddress: %s\n", cloned_mac);
 
-#if 0	// TODO: fix MAC setting, blacklist for wireless.
+#if 0  // TODO: fix MAC setting, blacklist for wireless.
 nm_setting_wireless_get_generate_mac_address_mask (s_wireless)
 nm_setting_wireless_get_mac_address_blacklist (s_wireless)
 ifcfg-rh:
@@ -2184,19 +2184,19 @@ do_write_construct (NMConnection *connection,
 	}
 
 	//if (!write_team_port_setting (connection, netplan, error))
-	//	return FALSE;
+	//    return FALSE;
 
 	//if (!write_dcb_setting (connection, netplan, error))
-	//	return FALSE;
+	//    return FALSE;
 
 	//if (!write_proxy_setting (connection, netplan, error))
-	//	return FALSE;
+	//    return FALSE;
 
 	//if (!write_ethtool_setting (connection, netplan, error))
-	//	return FALSE;
+	//    return FALSE;
 
 	//if (!write_user_setting (connection, netplan, error))
-	//	return FALSE;
+	//    return FALSE;
 
 	if (!write_match_setting (connection, netplan, error))
 		return FALSE;
@@ -2204,7 +2204,7 @@ do_write_construct (NMConnection *connection,
 	//write_sriov_setting (connection, netplan);
 
 	//if (!write_tc_setting (connection, netplan, error))
-	//	return FALSE;
+	//    return FALSE;
 
 	if (!write_ip4_setting (connection,
 	                        netplan,
