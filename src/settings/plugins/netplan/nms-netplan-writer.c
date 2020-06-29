@@ -333,7 +333,7 @@ write_wireless_security_setting (NMConnection *connection,
 	}
 
 	key_mgmt = nm_setting_wireless_security_get_key_mgmt (s_wsec);
-	g_assert (key_mgmt);
+	nm_assert (key_mgmt);
 
 	//auth_alg = nm_setting_wireless_security_get_auth_alg (s_wsec);
 
@@ -1053,10 +1053,10 @@ get_setting_default_uint (NMSetting *setting, const char *prop)
 	guint32 ret = 0;
 
 	pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (setting), prop);
-	g_assert (pspec);
+	nm_assert (pspec);
 	g_value_init (&val, pspec->value_type);
 	g_param_value_set_default (pspec, &val);
-	g_assert (G_VALUE_HOLDS_UINT (&val));
+	nm_assert (G_VALUE_HOLDS_UINT (&val));
 	ret = g_value_get_uint (&val);
 	g_value_unset (&val);
 	return ret;
@@ -1071,10 +1071,10 @@ get_setting_default_boolean (NMSetting *setting, const char *prop)
 	gboolean ret = 0;
 
 	pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (setting), prop);
-	g_assert (pspec);
+	nm_assert (pspec);
 	g_value_init (&val, pspec->value_type);
 	g_param_value_set_default (pspec, &val);
-	g_assert (G_VALUE_HOLDS_BOOLEAN (&val));
+	nm_assert (G_VALUE_HOLDS_BOOLEAN (&val));
 	ret = g_value_get_boolean (&val);
 	g_value_unset (&val);
 	return ret;
@@ -1882,7 +1882,7 @@ write_ip6_setting (NMConnection *connection,
 		                       "      gateway6: %s\n", gateway);
 
 	value = nm_setting_ip_config_get_method (s_ip6);
-	g_assert (value);
+	nm_assert (value);
 	if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_IGNORE)) {
 		return TRUE;
 	} else if (!strcmp (value, NM_SETTING_IP6_CONFIG_METHOD_DISABLED)) {
