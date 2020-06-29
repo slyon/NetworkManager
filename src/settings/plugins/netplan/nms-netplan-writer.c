@@ -454,7 +454,7 @@ CIPHER_GROUP
 			             key_mgmt, NM_SETTING_WIRELESS_SECURITY_SETTING_NAME);
 			return FALSE;
 		}
-		// XXX: Should be using set_secret() here?
+		// TODO: Should we be using set_secret() here?
 		g_output_stream_printf(netplan, 0, NULL, NULL,
 		                       "          password: \"%s\"\n", psk);
 	} else if (wpa) {
@@ -968,7 +968,7 @@ static const struct {
 	{ NM_SETTING_BOND_OPTION_RESEND_IGMP, "resend-igmp" },
 	{ NM_SETTING_BOND_OPTION_LP_INTERVAL, "learn-packet-interval" },
 	{ NM_SETTING_BOND_OPTION_PRIMARY, "primary" },
-	// XXX: Needs to be implemented in netplan
+	// TODO: Needs to be implemented in netplan
 	//#define NM_SETTING_BOND_OPTION_ACTIVE_SLAVE      "active_slave"
 	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYS_PRIO "ad_actor_sys_prio"
 	//#define NM_SETTING_BOND_OPTION_AD_ACTOR_SYSTEM   "ad_actor_system"
@@ -1193,7 +1193,7 @@ write_bridge_setting (NMConnection *connection, GOutputStream *netplan, GError *
 static gboolean
 write_bridge_port_setting (NMConnection *connection, GOutputStream *netplan, GError **error)
 {
-	/* XXX: Might need reorg in netplan to support in member device bond/bridge params.
+	/* TODO: Might need reorg in netplan to support in member device bond/bridge params.
 	 *   We need to make sure bridge-port params do not get overwritten in netplan, when
 	 *   multiple YAML files are read, which define the same bridge master ID. */
 	NMSettingBridgePort *s_port;
@@ -2357,7 +2357,7 @@ nms_netplan_writer_write_connection (NMConnection *connection,
 	if (!filename) {
 		/* Create new YAML config file */
 		filename_str = g_string_sized_new (120);
-		/* XXX: Should we mark connections (YAML files) with definitions of
+		/* TODO: Should we mark connections (YAML files) with definitions of
 		 *   physical VS virtual interfaces (e.g. bridge, bond, ...)? To be
 		 *   able to load physical connections prior to virtual connections,
 		 *   which might contain references to those physical ifaces and could

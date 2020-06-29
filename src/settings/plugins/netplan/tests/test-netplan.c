@@ -174,7 +174,7 @@ test_write_wired_static (void)
 	g_object_set (s_wired,
 	              NM_SETTING_WIRED_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
 	              NM_SETTING_WIRED_CLONED_MAC_ADDRESS, "00:11:22:33:44:55",
-	              // XXX: Netplan will change any flag to DEFAULT, except IGNORE
+	              // FIXME: Netplan will change any flag to DEFAULT, except IGNORE
 	              NM_SETTING_WIRED_WAKE_ON_LAN, NM_SETTING_WIRED_WAKE_ON_LAN_DEFAULT,
 	              NM_SETTING_WIRED_MTU, mtu,
 	              NULL);
@@ -273,7 +273,7 @@ test_write_wired_static (void)
 	/* Verify Wake-on-LAN */
 	s_wired = nm_connection_get_setting_wired (reread);
 	g_assert_true (s_wired);
-	// XXX: netplan can only set DEFAULT (wake-on-lan = true) or IGNORE (wake-on-lan = false)
+	// FIXME: netplan can only set DEFAULT (wake-on-lan = true) or IGNORE (wake-on-lan = false)
 	g_assert_true (nm_setting_wired_get_wake_on_lan (s_wired) == NM_SETTING_WIRED_WAKE_ON_LAN_DEFAULT);
 
 	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
@@ -1547,7 +1547,7 @@ test_example_field_wifi (void)
 	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
 	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
 	g_object_set (s_wsec,
-	              /* XXX: AUTH_ALG=open seems to be invalid for WPA-PSK. */
+	              /* AUTH_ALG=open seems to be invalid for WPA-PSK. */
 	              //NM_SETTING_WIRELESS_SECURITY_AUTH_ALG, "open",
 	              //NM_SETTING_WIRELESS_SECURITY_GROUP, "",
 	              NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk",

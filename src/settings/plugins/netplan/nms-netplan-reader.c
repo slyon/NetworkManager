@@ -110,7 +110,7 @@ make_connection_name (NetplanNetDefinition *nd,
 		return name;
 
 	/* Otherwise construct a new NAME */
-	/* XXX: Should we stick to netplan's "netplan-IFNAME[-SSID]" naming scheme? */
+	/* TODO: Should we stick to netplan's "netplan-IFNAME[-SSID]" naming scheme? */
 	if (!prefix)
 		prefix = "System";
 
@@ -1250,7 +1250,7 @@ modem_connection_from_netplan (const char *file,
 
 	connection = nm_simple_connection_new ();
 
-	// XXX: make this part of the netplan library
+	// TODO: make this part of the netplan library
 	/* Same check as defined in netplan/src/nm.c:modem_is_gsm() */
 	if (nd->modem_params.apn ||  nd->modem_params.auto_config ||
 	    nd->modem_params.device_id || nd->modem_params.network_id ||
@@ -1835,7 +1835,7 @@ SUBCHANNELS
 }
 
 
-// XXX: This is debug code only, get rid of it before upstreaming.
+// TODO: This is debug code only, get rid of it before upstreaming.
 static void
 netplan_ht_debug (gpointer key,
                   gpointer value,
