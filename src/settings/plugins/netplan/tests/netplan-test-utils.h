@@ -79,7 +79,7 @@ _log_keyfile (NMConnection *con)
 {
 	gs_unref_keyfile GKeyFile *kf = NULL;
 	gs_free char *str = NULL;
-	kf = nm_keyfile_write (con, NULL, NULL, NULL);
+	kf = nm_keyfile_write (con, NM_KEYFILE_HANDLER_FLAGS_NONE, NULL, NULL, NULL);
 	str = g_key_file_to_data (kf, NULL, NULL);
 	printf("===== Keyfile =====\n%s\n===== Keyfile End =====\n", str);
 }
