@@ -13,7 +13,7 @@ network:
             identity: Bob Saget
             anonymous-identity: barney
             password: Kids, it was back in October 2008...
-            ca-certificate: /x/src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
+            ca-certificate: src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
       dhcp4: yes
       dhcp6: yes
       ipv6-address-generation: stable-privacy

@@ -13,7 +13,7 @@ network:
             identity: Bill Smith
             anonymous-identity: foobar22
             password: ;alkdfja;dslkfjsad;lkfjsadf
-            ca-certificate: /x/src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
+            ca-certificate: src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
       dhcp4: yes
       dhcp6: yes
       ipv6-address-generation: stable-privacy
