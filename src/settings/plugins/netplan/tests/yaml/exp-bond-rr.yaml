@@ -4,9 +4,9 @@ network:
   bonds:
     bond-rr:
       parameters:
+        mode: balance-rr
         down-delay: 5
         mii-monitor-interval: 80
-        mode: balance-rr
         packets-per-slave: 2
         up-delay: 10
       dhcp4: yes

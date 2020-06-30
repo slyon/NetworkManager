@@ -4,8 +4,8 @@ network:
   bonds:
     bond-lacp:
       parameters:
-        lacp-rate: fast
         mode: 802.3ad
+        lacp-rate: fast
       dhcp4: yes
       dhcp6: yes
       ipv6-address-generation: stable-privacy

@@ -4,6 +4,7 @@ network:
   bonds:
     bond0:
       parameters:
+        mode: active-backup
         ad-select: count
         all-slaves-active: true
         arp-all-targets: all
@@ -13,7 +14,6 @@ network:
         fail-over-mac-policy: active
         learn-packet-interval: 2
         min-links: 1
-        mode: active-backup
         gratuitous-arp: 2
         primary: eno1
         primary-reselect-policy: better
