@@ -10,9 +10,9 @@ network:
             key-management: eap
             method: tls
             identity: Bill Smith
-            ca-certificate: /x/src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
-            client-certificate: /x/src/settings/plugins/netplan/tests/yaml/test1_key_and_cert.pem
-            client-key: /x/src/settings/plugins/netplan/tests/yaml/test1_key_and_cert.pem
+            ca-certificate: src/settings/plugins/netplan/tests/yaml/test_ca_cert.pem
+            client-certificate: src/settings/plugins/netplan/tests/yaml/test1_key_and_cert.pem
+            client-key: src/settings/plugins/netplan/tests/yaml/test1_key_and_cert.pem
             client-key-password: test1
       dhcp4: yes
       dhcp6: yes

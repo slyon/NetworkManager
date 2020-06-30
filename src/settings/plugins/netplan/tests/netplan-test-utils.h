@@ -50,13 +50,14 @@
 #include "nm-test-utils-core.h"
 
 #define TEST_NETPLAN_DIR        NM_BUILD_SRCDIR"/src/settings/plugins/netplan/tests/yaml"
+#define TEST_NETPLAN_DIR_REL    "src/settings/plugins/netplan/tests/yaml"
 #define TEST_SCRATCH_DIR        NM_BUILD_BUILDDIR"/src/settings/plugins/netplan/tests/yaml"
 #define TEST_SCRATCH_DIR_TMP    TEST_SCRATCH_DIR"/tmp"
 
-#define TEST_NETPLAN_WIFI_WPA_EAP_TLS_CA_CERT TEST_NETPLAN_DIR"/test_ca_cert.pem"
-#define TEST_NETPLAN_WIFI_WPA_EAP_TLS_CLIENT_CERT TEST_NETPLAN_DIR"/test1_key_and_cert.pem"
-#define TEST_NETPLAN_WIFI_WPA_EAP_TLS_PRIVATE_KEY TEST_NETPLAN_DIR"/test1_key_and_cert.pem"
-#define TEST_NETPLAN_WIFI_WPA_EAP_PEAP_CA_CERT TEST_NETPLAN_DIR"/test_ca_cert.pem"
+#define TEST_NETPLAN_WIFI_WPA_EAP_TLS_CA_CERT TEST_NETPLAN_DIR_REL"/test_ca_cert.pem"
+#define TEST_NETPLAN_WIFI_WPA_EAP_TLS_CLIENT_CERT TEST_NETPLAN_DIR_REL"/test1_key_and_cert.pem"
+#define TEST_NETPLAN_WIFI_WPA_EAP_TLS_PRIVATE_KEY TEST_NETPLAN_DIR_REL"/test1_key_and_cert.pem"
+#define TEST_NETPLAN_WIFI_WPA_EAP_PEAP_CA_CERT TEST_NETPLAN_DIR_REL"/test_ca_cert.pem"
 
 /*****************************************************************************/
 
