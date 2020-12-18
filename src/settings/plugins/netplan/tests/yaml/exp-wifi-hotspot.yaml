@@ -1,0 +1,15 @@
+network:
+  version: 2
+  renderer: NetworkManager
+  wifis:
+    wlan0:
+      access-points:
+        hotspot-test:
+          mode: ap
+          auth:
+            key-management: psk
+          password: "s0s3cr3t"
+      networkmanager:
+        name: Hotspot
+        uuid: 68a4746f-9ad9-409e-8b80-c5944806a1a5
+        device: wlan0

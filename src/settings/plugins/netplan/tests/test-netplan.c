@@ -497,7 +497,7 @@ test_write_wifi_main (void)
 	              NM_SETTING_WIRELESS_MAC_ADDRESS, "de:ad:be:ef:ca:fe",
 	              NM_SETTING_WIRELESS_CLONED_MAC_ADDRESS, "00:11:22:33:44:55",
 	              NM_SETTING_WIRELESS_MTU, mtu,
-	              NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_AP,
+	              NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_INFRA,
 	              NM_SETTING_WIRELESS_SSID, ssid,
 	              NULL);
 
@@ -515,6 +515,70 @@ test_write_wifi_main (void)
 	_writer_new_connec_exp (connection,
 	                        TEST_SCRATCH_DIR_TMP,
 	                        TEST_NETPLAN_DIR"/exp-wifi-main.yaml",
+	                        &testfile);
+	reread = _connection_from_file (testfile, NULL, NULL, NULL);
+
+	nmtst_assert_connection_equals (connection, TRUE, reread, FALSE);
+}
+
+static void
+test_write_wifi_hotspot (void)
+{
+	nmtst_auto_unlinkfile char *testfile = NULL;
+	gs_unref_object NMConnection *connection = NULL;
+	gs_unref_object NMConnection *reread = NULL;
+	NMSettingConnection *s_con;
+	NMSettingWireless *s_wireless;
+	NMSettingWirelessSecurity *s_wsec;
+	NMSettingIPConfig *s_ip4;
+	NMSettingIPConfig *s_ip6;
+	GBytes *ssid;
+
+	connection = nm_simple_connection_new ();
+
+	/* Connection setting */
+	s_con = (NMSettingConnection *) nm_setting_connection_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_con));
+	g_object_set (s_con,
+	              NM_SETTING_CONNECTION_ID, "Hotspot",
+	              NM_SETTING_CONNECTION_UUID, "68a4746f-9ad9-409e-8b80-c5944806a1a5",
+	              NM_SETTING_CONNECTION_TYPE, NM_SETTING_WIRELESS_SETTING_NAME,
+	              //NM_SETTING_CONNECTION_AUTOCONNECT, FALSE,
+	              NM_SETTING_CONNECTION_INTERFACE_NAME, "wlan0",
+	              NULL);
+
+	/* Wireless setting */
+	s_wireless = (NMSettingWireless *) nm_setting_wireless_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wireless));
+	ssid = g_bytes_new ("hotspot-test", 12);
+	g_object_set (s_wireless,
+	              NM_SETTING_WIRELESS_MODE, NM_SETTING_WIRELESS_MODE_AP,
+	              NM_SETTING_WIRELESS_SSID, ssid,
+	              NULL);
+
+	s_wsec = (NMSettingWirelessSecurity *) nm_setting_wireless_security_new ();
+	nm_connection_add_setting (connection, NM_SETTING (s_wsec));
+	g_object_set (s_wsec,
+	              NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk",
+	              NM_SETTING_WIRELESS_SECURITY_PSK, "s0s3cr3t",
+	              NULL);
+	nm_setting_wireless_security_add_proto (s_wsec, "rsn");
+	nm_setting_wireless_security_add_group (s_wsec, "ccmp");
+	nm_setting_wireless_security_add_pairwise (s_wsec, "ccmp");
+
+	/* Add IP4/6 settings. */
+	_add_ip_auto_settings (connection, &s_ip4, &s_ip6);
+	g_object_set (s_ip4, NM_SETTING_IP_CONFIG_METHOD,
+	              NM_SETTING_IP4_CONFIG_METHOD_SHARED,
+	              NULL);
+	g_object_set (s_ip6, NM_SETTING_IP_CONFIG_METHOD,
+	              NM_SETTING_IP6_CONFIG_METHOD_IGNORE,
+	              NULL);
+	nmtst_assert_connection_verifies (connection);
+
+	_writer_new_connec_exp (connection,
+	                        TEST_SCRATCH_DIR_TMP,
+	                        TEST_NETPLAN_DIR"/exp-wifi-hotspot.yaml",
 	                        &testfile);
 	reread = _connection_from_file (testfile, NULL, NULL, NULL);
 
@@ -1674,6 +1738,7 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "wired/write/routing-policy", test_write_routing_rules);
 
 	g_test_add_func (TPATH "wifi/write/main", test_write_wifi_main);
+	g_test_add_func (TPATH "wifi/write/hotspot", test_write_wifi_hotspot);
 	g_test_add_func (TPATH "wifi/write/eap-tls", test_write_wifi_wpa_eap_tls);
 	g_test_add_func (TPATH "wifi/write/eap-ttls", test_write_wifi_wpa_eap_ttls_mschapv2);
 	g_test_add_func (TPATH "wifi/write/eap-peap", test_write_wifi_wpa_eap_peap);
