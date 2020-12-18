@@ -8,7 +8,7 @@ network:
       mtu: 1492
       access-points:
         my-net:
-          mode: ap
+          mode: infrastructure
           auth:
             key-management: psk
           password: "s0s3cr3t"

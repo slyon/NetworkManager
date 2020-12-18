@@ -381,6 +381,8 @@ make_ip4_setting (NetplanNetDefinition *nd, GError **error)
 	NMIPAddress *addr;
 	gs_free char *gateway = NULL;
 	GError *local = NULL;
+	GHashTableIter iter;
+	gpointer k, v;
 	char *method = NM_SETTING_IP4_CONFIG_METHOD_AUTO;
 
 	s_ip4 = (NMSettingIPConfig *) nm_setting_ip4_config_new ();
@@ -398,6 +400,17 @@ IPV4_ROUTE_TABLE
 
 	if (nd->ip4_addresses)
 		method = NM_SETTING_IP4_CONFIG_METHOD_MANUAL;
+
+	/* Check for hotspot/shared mode */
+	if (nd->access_points) {
+		g_hash_table_iter_init (&iter, nd->access_points);
+		g_hash_table_iter_next (&iter, &k, &v);
+		if (v) {
+			NetplanWifiAccessPoint *ap = (NetplanWifiAccessPoint *) v;
+			if (ap->mode == NETPLAN_WIFI_MODE_AP)
+				method = NM_SETTING_IP4_CONFIG_METHOD_SHARED;
+		}
+	}
 
 	if (nd->gateway4)
 		g_object_set (s_ip4, NM_SETTING_IP_CONFIG_GATEWAY, nd->gateway4, NULL);
@@ -457,8 +470,7 @@ NM_SETTING_IP4_CONFIG_DHCP_CLIENT_ID
 			nm_setting_ip_config_add_dns_search (s_ip4,
 												 g_array_index(nd->search_domains, char*, i));
 
-#if 0  /* TODO: Implement read for connection sharing. */
-NM_SETTING_IP4_CONFIG_METHOD_SHARED
+#if 0  /* TODO */
 nm_setting_ip_config_add_dns (s_ip4, v)
 nm_setting_ip_config_add_dns_search (s_ip4, *item)
 ifcfg-rh:
@@ -863,6 +875,12 @@ NM_SETTING_WIRELESS_SECURITY_WPS_METHOD
 ifcfg-rh:
 WPS_METHOD
 #endif
+		/* FIXME: hardcoded defaults for hotspot mode */
+		if (ap->mode == NETPLAN_WIFI_MODE_AP) {
+			nm_setting_wireless_security_add_proto (wsec, "rsn");
+			nm_setting_wireless_security_add_group (wsec, "ccmp");
+			nm_setting_wireless_security_add_pairwise (wsec, "ccmp");
+		}
 
 		/* Pairwise and Group ciphers (only relevant for WPA/RSN) */
 		if (ap->auth.key_management == NETPLAN_AUTH_KEY_MANAGEMENT_WPA_PSK
