@@ -1755,12 +1755,14 @@ int main (int argc, char **argv)
 	g_test_add_func (TPATH "bond/write/rr", test_write_bond_rr);
 	g_test_add_func (TPATH "bond/write/lacp", test_write_bond_lacp);
 
+	/* Modem/GSM/CDMA/LTE tests can be re-enabled after netplan.io 0.101-0ubuntu3 is deployed
 	g_test_add_func (TPATH "modem/write/gsm-auto-eui64", test_write_modem_gsm_auto_eui64);
 	g_test_add_func (TPATH "modem/write/gsm", test_write_modem_gsm);
 	g_test_add_func (TPATH "modem/write/cdma", test_write_modem_cdma);
+	*/
 
 	g_test_add_func (TPATH "example/field/wifi", test_example_field_wifi);
-	g_test_add_func (TPATH "example/field/lte", test_example_field_lte);
+	//g_test_add_func (TPATH "example/field/lte", test_example_field_lte);
 
 	return g_test_run ();
 }
