@@ -2045,7 +2045,8 @@ EXTRA_DIST += \
 
 ###############################################################################
 
-src_libNetworkManager_la_CPPFLAGS = $(src_cppflags)
+src_libNetworkManager_la_CPPFLAGS = $(src_cppflags) \
+	$(UUID_CFLAGS)
 
 src_libNetworkManager_la_SOURCES = \
 	\
@@ -2252,6 +2253,8 @@ src_libNetworkManager_la_LIBADD = \
 	$(LIBAUDIT_LIBS) \
 	$(LIBPSL_LIBS) \
 	$(LIBCURL_LIBS) \
+	$(UUID_LIBS) \
+	-lnetplan \
 	$(NULL)
 
 $(src_libNetworkManager_la_OBJECTS): $(libnm_core_lib_h_pub_mkenums)

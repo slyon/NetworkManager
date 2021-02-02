@@ -264,6 +264,9 @@ config_h.set10('HAVE_LIBSYSTEMD', libsystemd_dep.found())
 systemd_dep = dependency('systemd', required: false)
 have_systemd_200 = systemd_dep.found() and systemd_dep.version().version_compare('>= 200')
 
+libnetplan_dep = dependency('libnetplan', version: '>= 0', required: true)
+libuuid_dep = dependency('libuuid', version: '=> 1', required: true)
+
 gio_unix_dep = dependency('gio-unix-2.0', version: '>= 2.40')
 
 glib_dep = declare_dependency(
