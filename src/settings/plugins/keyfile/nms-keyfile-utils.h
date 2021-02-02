@@ -30,6 +30,8 @@ NMS_KEYFILE_STORAGE_TYPE_LIB (guint run_idx)
 
 /*****************************************************************************/
 
+gboolean _fix_netplan_interface_name(const char* rootdir);
+
 const char *nms_keyfile_nmmeta_check_filename (const char *filename,
                                                guint *out_uuid_len);
 

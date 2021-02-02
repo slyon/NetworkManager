@@ -54,6 +54,8 @@ deps = [
   libnm_udev_aux_dep,
   libsystemd_dep,
   libudev_dep,
+  libuuid_dep,
+  libnetplan_dep,
 ]
 
 if enable_wext

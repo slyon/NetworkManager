@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <glob.h>
 
 #include "nm-glib-aux/nm-io-utils.h"
 #include "nm-keyfile-internal.h"
@@ -26,6 +27,46 @@
 #define NMMETA_KF_KEY_NAME_NMMETA_SHADOWED_STORAGE  "shadowed-storage"
 
 /*****************************************************************************/
+
+/* This function can be removed, once https://pad.lv/1927350 is resolved */
+gboolean
+_fix_netplan_interface_name(const char* rootdir)
+{
+	glob_t gl;
+	mode_t orig_umask;
+	int rc;
+	g_autofree char* path = NULL;
+	path = g_build_path(G_DIR_SEPARATOR_S, rootdir ?: "/", "run",
+	                    "NetworkManager", "system-connections", NULL);
+	g_autofree char* rglob = g_strjoin(NULL, path, G_DIR_SEPARATOR_S,
+	                                   "*.nmconnection", NULL);
+	rc = glob(rglob, GLOB_BRACE, NULL, &gl);
+	if (rc != 0 && rc != GLOB_NOMATCH) {
+		g_warning ("failed to glob for %s: %m", rglob);
+		return FALSE;
+	}
+
+	for (size_t i = 0; i < gl.gl_pathc; ++i) {
+		GKeyFile *kf = g_key_file_new ();
+		g_key_file_load_from_file (kf, gl.gl_pathv[i], G_KEY_FILE_KEEP_COMMENTS, NULL);
+		gchar *iface = NULL;
+		iface = g_key_file_get_string (kf, "connection", "interface-name", NULL);
+		if (iface && g_str_has_prefix (iface, "NM-") && strlen (iface) > 15) {
+			g_key_file_remove_key (kf, "connection", "interface-name", NULL);
+			orig_umask = umask(077);
+			if (!g_key_file_save_to_file (kf, gl.gl_pathv[i], NULL)) {
+				g_warning ("failed to write updated keyfile %s", gl.gl_pathv[i]);
+				return FALSE;
+			}
+			g_info("netplan: deleted invalid connection.interface-name=%s in %s",
+			       iface, gl.gl_pathv[i]);
+			umask(orig_umask);
+		}
+		g_free (iface);
+		g_key_file_free (kf);
+	}
+	return TRUE;
+}
 
 const char *
 nms_keyfile_nmmeta_check_filename (const char *filename,
