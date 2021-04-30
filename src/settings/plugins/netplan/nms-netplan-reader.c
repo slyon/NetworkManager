@@ -1939,6 +1939,10 @@ IPV6TUNNELIPV4
 
 	/* TODO: Check for IBM s390 CTC devices and call them TYPE_ETHERNET */
 
+	if (!netdefs) {
+		_LOGI("No netdefs, empty file?");
+		return NULL;
+	}
 	if (netdef_id) {
 		/* Select netdef specified by ID. */
 		netdef = g_hash_table_lookup (netdefs, netdef_id);
