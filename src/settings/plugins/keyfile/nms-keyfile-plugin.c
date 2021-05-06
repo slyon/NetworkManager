@@ -561,7 +561,7 @@ reload_connections (NMSettingsPlugin *plugin,
 	nm_auto_clear_sett_util_storages NMSettUtilStorages storages_new = NM_SETT_UTIL_STORAGES_INIT (storages_new, nms_keyfile_storage_destroy);
 	int i;
 
-	netplan_generate(NULL);
+	_netplan_generate(NULL);
 	_fix_netplan_interface_name(NULL);
 	_load_dir (self, NMS_KEYFILE_STORAGE_TYPE_RUN, priv->dirname_run, &storages_new);
 	if (priv->dirname_etc)
@@ -1027,7 +1027,7 @@ delete_connection (NMSettingsPlugin *plugin,
 
 	g_autofree gchar* netplan_id = netplan_get_id_from_nm_filename(previous_filename, ssid);
 	netplan_delete_connection(netplan_id, NULL);
-	netplan_generate(NULL);
+	_netplan_generate(NULL);
 	_fix_netplan_interface_name(NULL);
 
 	_LOGT ("commit: deleted \"%s\", %s %s (%s%s%s%s)",

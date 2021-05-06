@@ -373,7 +373,7 @@ _internal_write_connection (NMConnection *connection,
 	 * we've written the /etc/netplan/*.yaml file instead. */
 	unlink(path);
 	g_free(path);
-	if (!netplan_generate(rootdir)) {
+	if (!_netplan_generate(rootdir)) {
 		g_set_error (error, NM_SETTINGS_ERROR, NM_SETTINGS_ERROR_FAILED,
 		                    "netplan generate failed");
 		return FALSE;

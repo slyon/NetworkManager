@@ -407,3 +407,16 @@ nms_keyfile_utils_check_file_permissions (NMSKeyfileFiletype filetype,
 	NM_SET_OUT (out_st, st);
 	return TRUE;
 }
+
+gboolean
+_netplan_generate(const char* rootdir)
+{
+    /* Use 'netplan_generate()' from libnetplan once that is fixed to not be
+     * DENIED by apparmor via snapd's 'network-setup-control' interface. */
+    const gchar *argv[] = { "/snap/network-manager/current/lib/netplan/generate", NULL , NULL, NULL };
+    if (rootdir) {
+        argv[1] = "--root-dir";
+        argv[2] = rootdir;
+    }
+    return g_spawn_sync(NULL, (gchar**)argv, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL);
+}
